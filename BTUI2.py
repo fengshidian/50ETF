@@ -741,8 +741,8 @@ class Details(QWidget):
 			Hedge={}
 			sum=0
 			for j,d in enumerate(PositionDiff_):
-				Hedge[TradeOptionProduct[j]]=QTableWidgetItem(str(self.BTdata.Delta_sheet_.loc[i,TradeOptionProduct[j].text()]))
-				sum=sum+self.BTdata.Delta_sheet_.loc[i,TradeOptionProduct[j].text()]
+				Hedge[TradeOptionProduct[j]]=QTableWidgetItem(str(self.BTdata.Trade_Delta_sheet_.loc[i,TradeOptionProduct[j].text()]))
+				sum=sum+self.BTdata.Trade_Delta_sheet_.loc[i,TradeOptionProduct[j].text()]
 				Hedge[TradeOptionProduct[j]].setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
 				tableWidget.setItem(j,10,Hedge[TradeOptionProduct[j]])
 			Hedge_sum=QTableWidgetItem(str(sum))
@@ -813,8 +813,8 @@ class Details(QWidget):
 			Position_=self.Position_.loc[i].dropna()
 			mktprice_=self.sheetdata.mktprice_sheet_.loc[i,OptionProduct_]
 			num=len(OptionProduct_)
-			tableWidget=QTableWidget(num+1,6)
-			tableWidget.setHorizontalHeaderLabels(['期权品种','买/卖','标的价格(元)','最新成交价格(元)','期权价值','持仓量(张)'])
+			tableWidget=QTableWidget(num+1,8)
+			tableWidget.setHorizontalHeaderLabels(['期权品种','买/卖','期权发行日','剩余到期时间','标的价格(元)','最新成交价格(元)','期权价值','持仓量(张)'])
 			tableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
 			OptionProduct={}
@@ -834,20 +834,30 @@ class Details(QWidget):
 					buy_sell[OptionProduct[j]]=QTableWidgetItem('空头')
 				buy_sell[OptionProduct[j]].setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
 				tableWidget.setItem(j,1,buy_sell[OptionProduct[j]])
+			startdate={}
+			for j,product in enumerate(OptionProduct_):
+				startdate[OptionProduct[j]]=QTableWidgetItem(str(self.BTdata.data.per_option_startdate[product]))
+				startdate[OptionProduct[j]].setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+				tableWidget.setItem(j,2,startdate[OptionProduct[j]])
+			ptmtradeday={}
+			for j,product in enumerate(OptionProduct_):
+				ptmtradeday[OptionProduct[j]]=QTableWidgetItem(str(self.BTdata.data.ptmtradeday_sheet_.loc[i,product]))
+				ptmtradeday[OptionProduct[j]].setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+				tableWidget.setItem(j,3,ptmtradeday[OptionProduct[j]])
 
 			
 			ETFPrice={}
 			for j,position in enumerate(Position_):
 				ETFPrice[OptionProduct[j]]=QTableWidgetItem(str(self.BTdata.underlying.loc[i,'spot']))
 				ETFPrice[OptionProduct[j]].setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)		
-				tableWidget.setItem(j,2,ETFPrice[OptionProduct[j]])
+				tableWidget.setItem(j,4,ETFPrice[OptionProduct[j]])
 				
 			
 			TradePrice={}
 			for j,price in enumerate(mktprice_):
 				TradePrice[OptionProduct[j]]=QTableWidgetItem(str(price))
 				TradePrice[OptionProduct[j]].setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-				tableWidget.setItem(j,3,TradePrice[OptionProduct[j]])
+				tableWidget.setItem(j,5,TradePrice[OptionProduct[j]])
 			
 			
 			OptionValue={}
@@ -866,10 +876,12 @@ class Details(QWidget):
 					OptionValue[OptionProduct[j]]=QTableWidgetItem(str(temp))
 				sum=sum+temp
 				OptionValue[OptionProduct[j]].setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-				tableWidget.setItem(j,4,OptionValue[OptionProduct[j]])
+				tableWidget.setItem(j,6,OptionValue[OptionProduct[j]])
 			OptionValue_sum=QTableWidgetItem(str(sum))
 			OptionValue_sum.setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-			tableWidget.setItem(len(OptionValue),4,OptionValue_sum)
+			tableWidget.setItem(len(OptionValue),6,OptionValue_sum)
+
+	
 					
 
 			TradeVolume={}
@@ -878,10 +890,10 @@ class Details(QWidget):
 				TradeVolume[OptionProduct[j]]=QTableWidgetItem(str(abs(num)))
 				sum=sum+abs(num)
 				TradeVolume[OptionProduct[j]].setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-				tableWidget.setItem(j,5,TradeVolume[OptionProduct[j]])
+				tableWidget.setItem(j,7,TradeVolume[OptionProduct[j]])
 			TradeVolume_sum=QTableWidgetItem(str(sum))	
 			TradeVolume_sum.setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-			tableWidget.setItem(len(TradeVolume),5,TradeVolume_sum)
+			tableWidget.setItem(len(TradeVolume),7,TradeVolume_sum)
 
 			hbox=QHBoxLayout()
 			hbox.addWidget(tableWidget)
@@ -893,7 +905,7 @@ class Details(QWidget):
 	def Account(self):
 		num=len(self.BTdata.BackTestInterval)
 		self.AccountTableWidget=QTableWidget(num+1,16)#ETFValueSum  ETFDebtValueSum ETFInHnadSum  ETFDebtSum
-		self.AccountTableWidget.setHorizontalHeaderLabels(['日期','可用资金','总权益','期权费','期权累计盈亏','50ETF累计盈亏','ETF保证金账户','期权保证金账户','持有ETF头寸','持有ETF价值','借ETF头寸','借ETF价值','期权手续费','期权累计的手续费','50ETF手续费','50ETF累计的手续费'])#期权费  shortvalue
+		self.AccountTableWidget.setHorizontalHeaderLabels(['日期','可用资金','总权益','期权费','期权累计盈亏','50ETF累计盈亏','ETF保证金账户','期权保证金账户','持有ETF头寸','借ETF头寸','ETF净头寸','ETF净头寸价值','期权手续费','期权累计的手续费','50ETF手续费','50ETF累计的手续费'])#期权费  shortvalue
 		self.AccountTableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 		self.AccountTableWidget.hide()
 		date={}
@@ -951,16 +963,16 @@ class Details(QWidget):
 			ETFDebt[j]=QTableWidgetItem(str(round(self.BTdata.ETFDebtSum_.loc[d,'ETFDebt'],4)))
 			ETFDebt[j].setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
 			self.AccountTableWidget.setItem(j,9,ETFDebt[j])
-		ETFValueSum={}
+		netETFPosition={}
 		for j,d in enumerate(self.BTdata.BackTestInterval):
-			ETFValueSum[j]=QTableWidgetItem(str(round(self.BTdata.ETFValueSum_.loc[d,'ETFValue'],4)))
-			ETFValueSum[j].setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-			self.AccountTableWidget.setItem(j,10,ETFValueSum[j])
-		ETFDebtValueSum={}
+			netETFPosition[j]=QTableWidgetItem(str(round(self.BTdata.netETFPosition_.loc[d,'netETF'],4)))
+			netETFPosition[j].setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+			self.AccountTableWidget.setItem(j,10,netETFPosition[j])
+		netETFValueSum={}
 		for j,d in enumerate(self.BTdata.BackTestInterval):
-			ETFDebtValueSum[j]=QTableWidgetItem(str(round(self.BTdata.ETFDebtValueSum_.loc[d,'ETFDebt'],4)))
-			ETFDebtValueSum[j].setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-			self.AccountTableWidget.setItem(j,11,ETFDebtValueSum[j])
+			netETFValueSum[j]=QTableWidgetItem(str(round(self.BTdata.netETFValueSum_.loc[d,'netETF'],4)))
+			netETFValueSum[j].setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+			self.AccountTableWidget.setItem(j,11,netETFValueSum[j])
 
 
 

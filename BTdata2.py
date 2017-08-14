@@ -34,6 +34,7 @@ class BackTestData:
 		self.MaxDrawback_num(30)
 	def sheetData_temp(self):
 		self.BT_delta_sheet_=pd.DataFrame(self.data.delta_sheet_,index=self.BackTestInterval).fillna(0)
+		print self.BT_delta_sheet_
 		self.BT_gamma_sheet_=pd.DataFrame(self.data.gamma_sheet_,index=self.BackTestInterval).fillna(0)
 		self.BT_vega_sheet_=pd.DataFrame(self.data.vega_sheet_,index=self.BackTestInterval).fillna(0)
 		self.BT_theta_sheet_=pd.DataFrame(self.data.theta_sheet_,index=self.BackTestInterval).fillna(0)
@@ -44,26 +45,30 @@ class BackTestData:
 		self.BT_MarginAccount_sheet_=pd.DataFrame(self.data.MarginAccount_sheet_,index=self.BackTestInterval).fillna(0)
 		self.BT_InitialAccount_sheet_=pd.DataFrame(self.data.InitialAccount_sheet_,index=self.BackTestInterval).fillna(0)
 		self.BT_ContractUnit_sheet_=pd.DataFrame(self.data.ContractUnit_sheet_,index=self.BackTestInterval).fillna(0)
-		
+	###策略头寸	
 	def OptionPosition(self):
 		self.OptionPosition={}
+		self.temp_optioninhand=[]
 		for i in self.data.option_names:
 			self.OptionPosition[i]=[]
 		for number,date in enumerate(self.BackTestInterval):
-			OptionPool=self.BT_delta_sheet_.loc[date].dropna().index
-			deltaPortsfolioOneday=0
-			SI=self.StrategyImport(date)
-			example=pd.DataFrame(SI)
-			num=0
+			_date=str(date)[:10]
+			latest_issue_date=self.data.option_startdate[self.data.option_startdate<=_date].iloc[-1]
+			optioninhand=[]
 			for option in self.data.option_names:
-				if option in OptionPool:
-					if option in example:
-						self.OptionPosition[option].append(example.loc[num,option])
-						num=num+1
+				if option in set(self.data.options_in_startdate[latest_issue_date]+self.temp_optioninhand):
+					if self.data.ptmtradeday_sheet_.loc[date,option]>1 and abs(self.BT_delta_sheet_.loc[date,option])<=0.7:
+						self.OptionPosition[option].append(10)
+						optioninhand.append(option)
+					elif self.data.ptmtradeday_sheet_.loc[date,option]==1:
+						self.OptionPosition[option].append(0)
 					else:
 						self.OptionPosition[option].append(0)
 				else:
 					self.OptionPosition[option].append(0)
+			self.temp_optioninhand=optioninhand
+			
+				
 		self.Position_=pd.DataFrame(self.OptionPosition,index=self.BackTestInterval,columns=self.data.option_names)
 		self.PositionDiff_=self.Position_.diff(1)
 		self.PositionDiff_.iloc[0]=self.Position_.iloc[0]
@@ -91,6 +96,11 @@ class BackTestData:
 		self.gamma={}
 		self.vega={}
 		self.theta={}
+
+		self.Trade_delta={}
+		self.Trade_gamma={}
+		self.Trade_vega={}
+		self.Trade_theta={}
 		
 		self.OptionTradeBuyVolume={}
 		self.OptionTradeSellVolume={}
@@ -110,13 +120,18 @@ class BackTestData:
 			self.vega[i]=[]
 			self.theta[i]=[]
 			
+			self.Trade_delta[i]=[]
+			self.Trade_gamma[i]=[]
+			self.Trade_vega[i]=[]
+			self.Trade_theta[i]=[]
+			
 			self.OptionTradeBuyVolume[i]=[]
 			self.OptionTradeSellVolume[i]=[]
 			self.OptionCost[i]=[]
 			self.ETFInHand[i]=[]
 			self.ETFDebt[i]=[]
 		for num1,i in enumerate(self.BackTestInterval):
-			optionpool=self.BT_delta_sheet_.loc[i].dropna().index
+			optionpool=pd.DataFrame(self.data.delta_sheet_,index=self.BackTestInterval).loc[i].dropna().index
 			if len(self.CashInHandSum)==0:
 				cashinhand=self.capital
 			else:
@@ -164,8 +179,7 @@ class BackTestData:
 							else:
 								self.ETFInHand[j].append(0)
 								self.ETFDebt[j].append(0-ETF_temp)
-								
-							print self.ETFInHand[j][-1],self.ETFDebt[j][-1]
+						
 							temp1=self.underlying.loc[i,'spot']*self.BT_delta_sheet_.loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j]*self.OptionPositionDiff_[j].loc[i,j]
 							self.ETFTrade[j].append(temp1)
 							
@@ -240,14 +254,22 @@ class BackTestData:
 							self.gamma[j].append(self.BT_gamma_sheet_.loc[i,j]*self.OptionPosition_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j]-self.BT_gamma_sheet_[j].iloc[num1-1]*self.OptionPosition_[j].iloc[num1-1,0]*self.BT_ContractUnit_sheet_[j].iloc[num1-1])
 							self.vega[j].append(self.BT_vega_sheet_.loc[i,j]*self.OptionPosition_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j]-self.BT_vega_sheet_[j].iloc[num1-1]*self.OptionPosition_[j].iloc[num1-1,0]*self.BT_ContractUnit_sheet_[j].iloc[num1-1])
 							self.theta[j].append(self.BT_theta_sheet_.loc[i,j]*self.OptionPosition_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j]-self.BT_theta_sheet_[j].iloc[num1-1]*self.OptionPosition_[j].iloc[num1-1,0]*self.BT_ContractUnit_sheet_[j].iloc[num1-1])
+
 						else:
+		
 							self.delta[j].append(self.BT_delta_sheet_.loc[i,j]*self.OptionPosition_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j])
 							self.gamma[j].append(self.BT_gamma_sheet_.loc[i,j]*self.OptionPosition_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j])
 							self.vega[j].append(self.BT_vega_sheet_.loc[i,j]*self.OptionPosition_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j])
 							self.theta[j].append(self.BT_theta_sheet_.loc[i,j]*self.OptionPosition_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j])
 
+						self.Trade_delta[j].append(self.BT_delta_sheet_.loc[i,j]*self.OptionPositionDiff_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j])
+						self.Trade_gamma[j].append(self.BT_gamma_sheet_.loc[i,j]*self.OptionPositionDiff_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j])
+						self.Trade_vega[j].append(self.BT_vega_sheet_.loc[i,j]*self.OptionPositionDiff_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j])
+						self.Trade_theta[j].append(self.BT_theta_sheet_.loc[i,j]*self.OptionPositionDiff_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j])
+
 						temp_capital=self.premium[j][-1]+self.ETFTrade[j][-1]+self.ETFMarginAccount[j][-1]+self.OptionMarginAccount[j][-1]
 						cashinhand=cashinhand+temp_capital
+						
 #-------------------------------------------------------------------------------------------------------空头------------------------------------------------------------------------------------------------------
 #-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 					elif self.OptionPositionDiff_[j].loc[i,j]<0:
@@ -364,11 +386,17 @@ class BackTestData:
 							self.gamma[j].append(self.BT_gamma_sheet_.loc[i,j]*self.OptionPosition_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j]-self.BT_gamma_sheet_[j].iloc[num1-1]*self.OptionPosition_[j].iloc[num1-1,0]*self.BT_ContractUnit_sheet_[j].iloc[num1-1])
 							self.vega[j].append(self.BT_vega_sheet_.loc[i,j]*self.OptionPosition_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j]-self.BT_vega_sheet_[j].iloc[num1-1]*self.OptionPosition_[j].iloc[num1-1,0]*self.BT_ContractUnit_sheet_[j].iloc[num1-1])
 							self.theta[j].append(self.BT_theta_sheet_.loc[i,j]*self.OptionPosition_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j]-self.BT_theta_sheet_[j].iloc[num1-1]*self.OptionPosition_[j].iloc[num1-1,0]*self.BT_ContractUnit_sheet_[j].iloc[num1-1])
+				
 						else:
 							self.delta[j].append(self.BT_delta_sheet_.loc[i,j]*self.OptionPosition_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j])
 							self.gamma[j].append(self.BT_gamma_sheet_.loc[i,j]*self.OptionPosition_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j])
 							self.vega[j].append(self.BT_vega_sheet_.loc[i,j]*self.OptionPosition_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j])
 							self.theta[j].append(self.BT_theta_sheet_.loc[i,j]*self.OptionPosition_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j])
+
+						self.Trade_delta[j].append(self.BT_delta_sheet_.loc[i,j]*self.OptionPositionDiff_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j])
+						self.Trade_gamma[j].append(self.BT_gamma_sheet_.loc[i,j]*self.OptionPositionDiff_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j])
+						self.Trade_vega[j].append(self.BT_vega_sheet_.loc[i,j]*self.OptionPositionDiff_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j])
+						self.Trade_theta[j].append(self.BT_theta_sheet_.loc[i,j]*self.OptionPositionDiff_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j])
 
 							#--------------------------------------------------------------------------------------------------
 						temp_capital=self.premium[j][-1]+self.ETFTrade[j][-1]+self.ETFMarginAccount[j][-1]+self.OptionMarginAccount[j][-1]
@@ -435,7 +463,7 @@ class BackTestData:
 						
 						#
 						if num1>=1:
-							self.ETFInHand[j].append(-self.ETFInHand[j][-1])
+							self.ETFInHand[j].append(self.ETFInHand[j][-1])
 							self.ETFDebt[j].append(self.ETFDebt[j][-1])
 						else:
 							self.ETFInHand[j].append(0)
@@ -456,11 +484,19 @@ class BackTestData:
 							self.gamma[j].append(self.BT_gamma_sheet_.loc[i,j]*self.OptionPosition_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j]-self.BT_gamma_sheet_[j].iloc[num1-1]*self.OptionPosition_[j].iloc[num1-1,0]*self.BT_ContractUnit_sheet_[j].iloc[num1-1])
 							self.vega[j].append(self.BT_vega_sheet_.loc[i,j]*self.OptionPosition_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j]-self.BT_vega_sheet_[j].iloc[num1-1]*self.OptionPosition_[j].iloc[num1-1,0]*self.BT_ContractUnit_sheet_[j].iloc[num1-1])
 							self.theta[j].append(self.BT_theta_sheet_.loc[i,j]*self.OptionPosition_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j]-self.BT_theta_sheet_[j].iloc[num1-1]*self.OptionPosition_[j].iloc[num1-1,0]*self.BT_ContractUnit_sheet_[j].iloc[num1-1])
+
 						else:
 							self.delta[j].append(self.BT_delta_sheet_.loc[i,j]*self.OptionPosition_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j])
 							self.gamma[j].append(self.BT_gamma_sheet_.loc[i,j]*self.OptionPosition_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j])
 							self.vega[j].append(self.BT_vega_sheet_.loc[i,j]*self.OptionPosition_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j])
 							self.theta[j].append(self.BT_theta_sheet_.loc[i,j]*self.OptionPosition_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j])
+
+						self.Trade_delta[j].append(self.BT_delta_sheet_.loc[i,j]*self.OptionPositionDiff_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j])
+						self.Trade_gamma[j].append(self.BT_gamma_sheet_.loc[i,j]*self.OptionPositionDiff_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j])
+						self.Trade_vega[j].append(self.BT_vega_sheet_.loc[i,j]*self.OptionPositionDiff_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j])
+						self.Trade_theta[j].append(self.BT_theta_sheet_.loc[i,j]*self.OptionPositionDiff_[j].loc[i,j]*self.BT_ContractUnit_sheet_.loc[i,j])
+
+							
 
 						self.OptionTradeBuyVolume[j].append(0)
 						self.OptionTradeSellVolume[j].append(0)
@@ -479,14 +515,23 @@ class BackTestData:
 					self.gamma[j].append(0)
 					self.vega[j].append(0)
 					self.theta[j].append(0)
+		
+					self.Trade_delta[j].append(0)
+					self.Trade_gamma[j].append(0)
+					self.Trade_vega[j].append(0)
+					self.Trade_theta[j].append(0)
 					
 					self.OptionTradeBuyVolume[j].append(0)
 					self.OptionTradeSellVolume[j].append(0)
-					self.OptionCost[j].append(0)	
-					
-					self.ETFInHand[j].append(-self.ETFInHand[j][-1])
-					self.ETFDebt[j].append(self.ETFDebt[j][-1])
-					
+					self.OptionCost[j].append(0)
+	
+					if num1>=1:					
+						self.ETFInHand[j].append(self.ETFInHand[j][-1])
+						self.ETFDebt[j].append(self.ETFDebt[j][-1])
+					else:
+						self.ETFInHand[j].append(0)
+						self.ETFDebt[j].append(0)
+				
 			self.CashInHandSum.append(cashinhand)
 	
 		self.CashInHandSum_=pd.DataFrame(self.CashInHandSum,index=self.BackTestInterval,columns=['cashinhand'])
@@ -512,7 +557,11 @@ class BackTestData:
 		self.Gamma_sheet_=pd.DataFrame(self.gamma,index=self.BackTestInterval)
 		self.Vega_sheet_=pd.DataFrame(self.vega,index=self.BackTestInterval)
 		self.Theta_sheet_=pd.DataFrame(self.theta,index=self.BackTestInterval)
-		
+	
+		self.Trade_Delta_sheet_=pd.DataFrame(self.Trade_delta,index=self.BackTestInterval)
+		self.Trade_Gamma_sheet_=pd.DataFrame(self.Trade_gamma,index=self.BackTestInterval)
+		self.Trade_Vega_sheet_=pd.DataFrame(self.Trade_vega,index=self.BackTestInterval)
+		self.Trade_Theta_sheet_=pd.DataFrame(self.Trade_theta,index=self.BackTestInterval)
 		
 		#每只期权每日盈亏累计
 		self.ETFTradeSum_sheet_=self.ETFTrade_sheet_.cumsum()
@@ -524,7 +573,13 @@ class BackTestData:
 
 		self.ETFInHandSum_sheet_=pd.DataFrame(self.ETFInHand,index=self.BackTestInterval)#持有的ETF
 		self.ETFDebtSum_sheet_=pd.DataFrame(self.ETFDebt,index=self.BackTestInterval)
+		#ETF净头寸
+		netETFPosition=[a+b for a,b in zip(self.ETFInHandSum_sheet_.sum(axis=1),self.ETFDebtSum_sheet_.sum(axis=1))]
+		self.netETFPosition_=pd.DataFrame(netETFPosition,index=self.BackTestInterval,columns=['netETF'])
+		
+		
 
+		
 		self.ETFInHand_sheet_=self.ETFInHandSum_sheet_.diff(1)
 		self.ETFInHand_sheet_.iloc[0]=self.ETFInHandSum_sheet_.iloc[0]
 		
@@ -541,6 +596,11 @@ class BackTestData:
 		self.GammaSum_sheet_=self.Gamma_sheet_.cumsum()
 		self.VegaSum_sheet_=self.Vega_sheet_.cumsum()
 		self.ThetaSum_sheet_=self.Theta_sheet_.cumsum()
+
+		self.Trade_DeltaSum_sheet_=self.Trade_Delta_sheet_.cumsum()
+		self.Trade_GammaSum_sheet_=self.Trade_Gamma_sheet_.cumsum()
+		self.Trade_VegaSum_sheet_=self.Trade_Vega_sheet_.cumsum()
+		self.Traade_ThetaSum_sheet_=self.Trade_Theta_sheet_.cumsum()
 		
 		#每日盈亏
 		self.ETFTrade_=pd.DataFrame(self.ETFTrade_sheet_.sum(axis=1),columns=['ETFTrade'])
@@ -559,6 +619,11 @@ class BackTestData:
 		self.Gamma_=pd.DataFrame(self.Gamma_sheet_.sum(axis=1),columns=['gamma'])
 		self.Vega_=pd.DataFrame(self.Vega_sheet_.sum(axis=1),columns=['vega'])
 		self.Theta_=pd.DataFrame(self.Theta_sheet_.sum(axis=1),columns=['theta'])
+
+		self.Trade_Delta_=pd.DataFrame(self.Trade_Delta_sheet_.sum(axis=1),columns=['delta'])
+		self.Trade_Gamma_=pd.DataFrame(self.Trade_Gamma_sheet_.sum(axis=1),columns=['gamma'])
+		self.Trade_Vega_=pd.DataFrame(self.Trade_Vega_sheet_.sum(axis=1),columns=['vega'])
+		self.Trade_Theta_=pd.DataFrame(self.Trade_Theta_sheet_.sum(axis=1),columns=['theta'])
 		
 		#每日盈亏累计
 		self.ETFTradeSum_=self.ETFTrade_.cumsum()
@@ -573,6 +638,7 @@ class BackTestData:
 
 		self.ETFInHandSum_=pd.DataFrame(self.ETFInHandSum_sheet_.sum(axis=1),columns=['ETFInHand'])
 		self.ETFDebtSum_=pd.DataFrame(self.ETFDebtSum_sheet_.sum(axis=1),columns=['ETFDebt'])
+
 		self.ETFInHand_=self.ETFInHandSum_.diff(1)
 		self.ETFInHand_.iloc[0]=self.ETFInHandSum_.iloc[0]
 		self.ETFDebt_=self.ETFDebtSum_.diff(1)
@@ -580,18 +646,20 @@ class BackTestData:
 
 		ETFValueSum=[]
 		ETFDebtValueSum=[]
+		netETFValueSum=[]
 		for num,i in enumerate(self.BackTestInterval):
 			ETFValueSum.append(self.underlying.loc[i,'spot']*self.ETFInHandSum_.loc[i,'ETFInHand'])
 			ETFDebtValueSum.append(self.underlying.loc[i,'spot']*self.ETFDebtSum_.loc[i,'ETFDebt'])
+			netETFValueSum.append(self.underlying.loc[i,'spot']*self.netETFPosition_.loc[i,'netETF'])
 		self.ETFValueSum_=pd.DataFrame(ETFValueSum,index=self.BackTestInterval,columns=['ETFValue'])
 		self.ETFDebtValueSum_=pd.DataFrame(ETFDebtValueSum,index=self.BackTestInterval,columns=['ETFDebt'])
+		self.netETFValueSum_=pd.DataFrame(netETFValueSum,index=self.BackTestInterval,columns=['netETF'])
+		
 	
 		self.ETFValue_=self.ETFValueSum_.diff(1)
 		self.ETFValue_.iloc[0]=self.ETFValueSum_.iloc[0]
 		self.ETFDebtValue_=self.ETFDebtValueSum_.diff(1)
 		self.ETFDebtValue_.iloc[0]=self.ETFDebtValueSum_.iloc[0]
-			
-			
 			
 
 		#每日Greeks累计
@@ -599,6 +667,11 @@ class BackTestData:
 		self.GammaSum_=self.Gamma_.cumsum()
 		self.VegaSum_=self.Vega_.cumsum()
 		self.ThetaSum_=self.Theta_.cumsum()
+			
+		self.Trade_DeltaSum_=self.Trade_Delta_.cumsum()
+		self.Trade_GammaSum_=self.Trade_Gamma_.cumsum()
+		self.Trade_VegaSum_=self.Trade_Vega_.cumsum()
+		self.Trade_ThetaSum_=self.Trade_Theta_.cumsum()
 		
 		#ETF 期权每日盈亏
 		self.option_value_trade=[a+b for a,b in zip(self.premium_['premium'],self.OptionValue_['OptionValue'])]
@@ -664,23 +737,9 @@ class BackTestData:
         			self.maxdrawback_num.append((d-temp)/temp)
 		self.maxdrawback_num_=pd.DataFrame(self.maxdrawback_num,index=self.BackTestInterval,columns=['drawback'])
 		self.MaxDrawback_num=np.min(self.maxdrawback_num_).values
+		#
 
-	def StrategyImport(self,date):
-		SI=[]
-		optionpool=pd.DataFrame(self.data.delta_sheet_,index=self.BackTestInterval).loc[date].dropna().index
-
-		
-		for option in self.data.option_names:
-			if option in optionpool:
-				if self.BT_impliedVolatility_sheet_.loc[date,option]>self.realizedVolatility.realizedVol.loc[date,'realizedVol_10']:
-					temp=0.99*self.capital/80/(self.BT_mktprice_sheet_.loc[date,option]*self.BT_ContractUnit_sheet_.loc[date,option])
-					temp=int(temp)
-					SI.append(self.order_target(option,temp))
-		'''
-		if self.data.option_names[50] in optionpool:
-			SI.append(self.sell_target(self.data.option_names[50],1))
-		'''
-		return SI 
+	
 			
 
 

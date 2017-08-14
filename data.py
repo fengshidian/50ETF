@@ -380,8 +380,11 @@ class sheetData:
 		ContractUnit_sheet=pd.DataFrame()
 		j=0
 		self.dataprocess=dataProcess()
+		option_startdate=[]
+		self.per_option_startdate={}
 		print '开始生成数据'
 		for i in self.dataprocess.sheet:
+			
 			if self.dataprocess.sheet_names[j][-1]=='A':
 				strike=self.dataprocess.sheet_names[j][-6:-1]
 				contractUnit=10220
@@ -396,6 +399,8 @@ class sheetData:
 			print self.dataprocess.sheet_names[j]
 			print self.dataprocess.sheet_num[j]
 			temp=simulation(self.dataprocess.sheet[j],strike,optiontype,self.dataprocess.spot_,contractUnit)
+			option_startdate.append(str(temp.delta_.index[0])[:10])
+			self.per_option_startdate[self.dataprocess.sheet_names[j]]=str(temp.delta_.index[0])[:10]
 
 			delta_sheet=pd.concat([delta_sheet,temp.delta_],axis=1)
 			gamma_sheet=pd.concat([gamma_sheet,temp.gamma_],axis=1)
@@ -436,10 +441,24 @@ class sheetData:
 		self.theoryvalue_sheet_=pd.DataFrame(np.matrix(theoryvalue_sheet),index=theoryvalue_sheet.index,columns=self.dataprocess.sheet_names)
 		self.mktprice_sheet_=pd.DataFrame(np.matrix(mktprice_sheet),index=mktprice_sheet.index,columns=self.dataprocess.sheet_names)
 		self.ptmtradeday_sheet_=pd.DataFrame(np.matrix(ptmtradeday_sheet),index=ptmtradeday_sheet.index,columns=self.dataprocess.sheet_names)
+		
 		self.MarginAccount_sheet_=pd.DataFrame(np.matrix(MarginAccount_sheet),index=MarginAccount_sheet.index,columns=self.dataprocess.sheet_names)
 		self.InitialAccount_sheet_=pd.DataFrame(np.matrix(InitialAccount_sheet),index=InitialAccount_sheet.index,columns=self.dataprocess.sheet_names)
 		self.ContractUnit_sheet_=pd.DataFrame(np.matrix(ContractUnit_sheet),index=ContractUnit_sheet.index,columns=self.dataprocess.sheet_names)
 		self.option_names=self.dataprocess.sheet_names
+		self.option_startdate=set(option_startdate)
+		temp=[]
+		for i in self.option_startdate:
+			temp.append(i)
+		temp=pd.Series(temp)
+		self.option_startdate=temp.sort_values()
+		
+		self.options_in_startdate={}
+		for i in self.option_startdate:
+			self.options_in_startdate[i]=[]
+		for num,j in enumerate(option_startdate):
+			self.options_in_startdate[j].append(self.option_names[num])
+		
 		print '数据生成完毕'
 		
 
