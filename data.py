@@ -18,7 +18,7 @@ class dataProcess:
 		self.data()
 	def data(self):
 		print '开始导入数据'
-		tempExcel=pd.read_excel('optiondata.xlsx')
+		tempExcel=pd.read_excel('option.xlsx')
 		print '数据导入完毕'
 		num=tempExcel.columns.shape[0]
 		underlying=tempExcel.iloc[:,-1:]
@@ -46,14 +46,15 @@ class dataProcess:
         		else:
             			pass
 		self.code_index=pd.Series(self.sheet_num,index=self.sheet_names)
-		rate_index=pd.read_excel('optiondata.xlsx',sheetname='NoRiskRate')[2:].iloc[:,0]
+		rate_index=pd.read_excel('option.xlsx',sheetname='NoRiskRate')[2:].iloc[:,0]
 		rate_index=pd.DatetimeIndex(rate_index.values)
-		rate_values=pd.read_excel('optiondata.xlsx',sheetname='NoRiskRate')[2:].iloc[:,1:3]
+		rate_values=pd.read_excel('option.xlsx',sheetname='NoRiskRate')[2:].iloc[:,1:3]
 		self.rate=pd.DataFrame(np.matrix(rate_values),index=rate_index,columns=['shibor','10年期国债'])/100
 #生成数据
 class simulation:
-    	def __init__(self,data,strike,option_type,preSpot_,contractUnit):
+    	def __init__(self,data,strike,option_type,preSpot_,contractUnit,costrate):
         	self.preSpot_=preSpot_
+		self.cost_rate=costrate
         	self.option_type=option_type
         	self.data=data
 		self.contractUnit=contractUnit
@@ -67,7 +68,6 @@ class simulation:
         	self.spot_=pd.DataFrame(self.spot,index=data.index,columns=['spot'])
         	self.ptmtradeday=list(data['ptmtradeday'])
         	self.ptmtradeday_=pd.DataFrame(self.ptmtradeday,index=data.index,columns=['ptmtradeday'])
-        	self.cost_rate=0.0025
         	self.impliedVolatility()
         	self.greeks()
         	#self.capital_account()
@@ -354,7 +354,8 @@ class simulation:
         
     
 class sheetData:
-	def __init__(self):
+	def __init__(self,costrate):
+		self.costrate=costrate
 		self.CreateSheet()
 	def CreateSheet(self):
 		delta_sheet=pd.DataFrame()
@@ -398,7 +399,7 @@ class sheetData:
 				optiontype=0
 			print self.dataprocess.sheet_names[j]
 			print self.dataprocess.sheet_num[j]
-			temp=simulation(self.dataprocess.sheet[j],strike,optiontype,self.dataprocess.spot_,contractUnit)
+			temp=simulation(self.dataprocess.sheet[j],strike,optiontype,self.dataprocess.spot_,contractUnit,self.costrate)
 			option_startdate.append(str(temp.delta_.index[0])[:10])
 			self.per_option_startdate[self.dataprocess.sheet_names[j]]=str(temp.delta_.index[0])[:10]
 
@@ -466,22 +467,23 @@ class realizedVolatility:
 	def __init__(self):
 		self.dataCreate()
 	def dataCreate(self):
-		underlying=pd.read_excel('optiondata.xlsx',sheetname='underlying')
+		underlying=pd.read_excel('option.xlsx',sheetname='underlying')
 		index_temp=pd.DatetimeIndex(underlying[8:].index)
 		self.underlying=pd.DataFrame(np.matrix(underlying[8:]),index=index_temp,columns=['spot'])
-		self.underlyingYieldRate=np.log(self.underlying.pct_change(1)+1)
-		self.realizedVol_90=self.underlyingYieldRate.rolling(window=90,center=False).std()*np.sqrt(252)
-		self.realizedVol_60=self.underlyingYieldRate.rolling(window=60,center=False).std()*np.sqrt(252)
-		self.realizedVol_30=self.underlyingYieldRate.rolling(window=30,center=False).std()*np.sqrt(252)
-		self.realizedVol_20=self.underlyingYieldRate.rolling(window=20,center=False).std()*np.sqrt(252)
-		self.realizedVol_10=self.underlyingYieldRate.rolling(window=10,center=False).std()*np.sqrt(252)
+		underlyingYieldRate=np.log(self.underlying.pct_change(1)+1)
+		
+		self.realizedVol_90=underlyingYieldRate.rolling(window=90,center=False).std()*np.sqrt(252)
+		self.realizedVol_60=underlyingYieldRate.rolling(window=60,center=False).std()*np.sqrt(252)
+		self.realizedVol_30=underlyingYieldRate.rolling(window=30,center=False).std()*np.sqrt(252)
+		self.realizedVol_20=underlyingYieldRate.rolling(window=20,center=False).std()*np.sqrt(252)
+		self.realizedVol_10=underlyingYieldRate.rolling(window=10,center=False).std()*np.sqrt(252)
 		temp=pd.concat([self.realizedVol_90,self.realizedVol_60,self.realizedVol_30,self.realizedVol_20,self.realizedVol_10],axis=1)
 		self.realizedVol=pd.DataFrame(np.matrix(temp),index=temp.index,columns=['realizedVol_90','realizedVol_60','realizedVol_30','realizedVol_20','realizedVol_10'])
 		
 
 class winddata:
 	def __init__(self):
-		self.tempExcel=pd.read_excel('optiondata.xlsx',sheetname='Greeks')
+		self.tempExcel=pd.read_excel('option.xlsx',sheetname='Greeks')
 		self.realizedVoldata=pd.read_excel('vol.xlsx',sheetname='Sheet1')
 		self.dataCreate()
 	def dataCreate(self):

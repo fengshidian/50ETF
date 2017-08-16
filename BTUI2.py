@@ -29,11 +29,15 @@ class BackTest(QWidget):
 		self.CreateButton()
 		self.comboBoxAct()
 		self.EditChange()
-		self.StartDate='20170201'
-		self.EndDate='20170618'
-		self.Capital=1000000
-		self.CostRate=0.0025		
-		
+		self.StartDate='20150210'
+		self.EndDate='20170630'
+		self.Capital=10000000
+		self.CostRate=0.0025
+		self.FixCostRate=5
+		self.optioncost=[1.3,0.3,10]
+		#self.FixCostRate=0
+		#self.CostRate=0		
+		#self.optioncost=[0,0,0]
 		self.initUI()
 	def CreateLabel(self):
 		self.lblStartDate=QLabel('起始日期',self)
@@ -187,9 +191,10 @@ class BackTest(QWidget):
 	def run(self):
 		self.Capital=float(self.Capital)
 		self.CostRate=float(self.CostRate)
+		self.FixCostRate=float(self.FixCostRate)
 		self.StartDate=self.StartDate[:4]+'-'+self.StartDate[4:6]+'-'+self.StartDate[6:8]
 		self.EndDate=self.EndDate[:4]+'-'+self.EndDate[4:6]+'-'+self.EndDate[6:8]
-		self.data=Bd.BackTestData(self.StartDate,self.EndDate,self.Capital,self.CostRate)
+		self.data=Bd.BackTestData(self.StartDate,self.EndDate,self.Capital,self.CostRate,self.FixCostRate,self.optioncost,)
 		self.Details=Details(self.data)
 		self.YieldRatePlot()
 		self.setText()
@@ -212,11 +217,12 @@ class BackTest(QWidget):
 		t=self.data.BackTestInterval
 		s=self.data.yield_rate_['yield_rate']
 		#s_ww=self.data.WWyield_rate_['yield_rate']
-		s_u=self.data.realizedVolatility.underlyingYieldRate[t[0]:t[-1]]['spot']
+		temp=self.data.realizedVolatility.underlying[t[0]:t[-1]]
+		s_u=(temp/temp.iloc[0]-1)['spot']
 		self.axesBT.plot(t,s,label=r'yield_rate')
 		self.axesBT.hold(True)
 		#self.axesBT.plot(t,s_ww,label=r'WWyield_rate')
-		self.axesBT.plot(t,s_u,label=r'underlying')
+		self.axesBT.plot(t,s_u,label=r'bench')
 		self.axesBT.legend(loc=2)
 		self.axesBT.hold(False)
 		self.canvasBT.draw()
@@ -588,30 +594,35 @@ class Details(QWidget):
 		self.axes3=self.figure.add_subplot(313)
 		
 
-		self.axes1.hold(False)
+		self.axes1.hold(True)
 		self.axes2.hold(True)
 		self.axes3.hold(True)
 		self.canvas=FigureCanvas(self.figure)
 		t=self.BTdata.BackTestInterval
-		s1=self.BTdata.yield_rate_['yield_rate']
+		s1_1=self.BTdata.yield_rate_['yield_rate']
+		temp=self.BTdata.realizedVolatility.underlying[t[0]:t[-1]]
+		s1_2=(temp/temp.iloc[0]-1)['spot']
 		
 		s2_1=self.BTdata.OptionTradeBuyVolume_['TradeVolume']
 		s2_2=self.BTdata.OptionTradeSellVolume_['TradeVolume']
 		
-		#self.BTdata.Asset_['Asset'][0]=0
 		s3=self.BTdata.Asset_['Asset']
 		s3_1=s3[s3>0].dropna()
 		t3_1=s3_1.index
 		s3_2=s3[s3<0].dropna()
 		t3_2=s3_2.index
-		self.axes1.plot(t,s1,label=r'yield_rate')
+		self.axes1.plot(t,s1_1,label=r'yield_rate')
+		self.axes1.plot(t,s1_2,label=r'bench')
 		self.axes1.set_ylabel(u'收益率')
+
 		self.axes2.bar(t,s2_1,align='center',yerr=0.01,color='red')
 		self.axes2.bar(t,s2_2,align='center',yerr=0.01,color='green')
 		self.axes2.set_ylabel(u'交易量')
+
 		self.axes3.bar(t3_1,s3_1,align='center',yerr=0.01,color='red')
 		self.axes3.bar(t3_2,s3_2,align='center',yerr=0.01,color='green')
 		self.axes3.set_ylabel(u'每日盈亏')
+
 		self.axes1.legend(loc=2)
 		self.axes2.legend(loc=2)
 		self.axes3.legend(loc=2)
@@ -659,8 +670,8 @@ class Details(QWidget):
 				
 			
 			TradePrice={}
-			for j,price in enumerate(mktprice_):
-				TradePrice[TradeOptionProduct[j]]=QTableWidgetItem(str(price))
+			for j,price in enumerate(PositionDiff_):
+				TradePrice[TradeOptionProduct[j]]=QTableWidgetItem(str(self.sheetdata.mktprice_sheet_.loc[i,TradeOptionProduct[j].text()]))
 				TradePrice[TradeOptionProduct[j]].setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
 				tableWidget.setItem(j,3,TradePrice[TradeOptionProduct[j]])
 			
@@ -749,27 +760,7 @@ class Details(QWidget):
 			Hedge_sum.setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
 			tableWidget.setItem(len(Hedge),10,Hedge_sum)
 
-			ETFTrade={}
-			sum=0
-			for j,d in enumerate(PositionDiff_):
-				ETFTrade[TradeOptionProduct[j]]=QTableWidgetItem(str(self.BTdata.ETFTrade_sheet_.loc[i,TradeOptionProduct[j].text()]))
-				sum=sum+self.BTdata.ETFTrade_sheet_.loc[i,TradeOptionProduct[j].text()]
-				ETFTrade[TradeOptionProduct[j]].setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-				tableWidget.setItem(j,11,ETFTrade[TradeOptionProduct[j]])
-			ETFTrade_sum=QTableWidgetItem(str(sum))
-			ETFTrade_sum.setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-			tableWidget.setItem(len(ETFTrade),11,ETFTrade_sum)
-
-			ETFMarginAccount={}
-			sum=0
-			for j,d in enumerate(PositionDiff_):
-				ETFMarginAccount[TradeOptionProduct[j]]=QTableWidgetItem(str(self.BTdata.ETFMarginAccount_sheet_.loc[i,TradeOptionProduct[j].text()]))
-				sum=sum+self.BTdata.ETFMarginAccount_sheet_.loc[i,TradeOptionProduct[j].text()]
-				ETFMarginAccount[TradeOptionProduct[j]].setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-				tableWidget.setItem(j,12,ETFMarginAccount[TradeOptionProduct[j]])
-			ETFMarginAccount_sum=QTableWidgetItem(str(sum))
-			ETFMarginAccount_sum.setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-			tableWidget.setItem(len(ETFMarginAccount),12,ETFMarginAccount_sum)
+			
 
 			ETFInHand={}
 			sum=0
@@ -943,7 +934,7 @@ class Details(QWidget):
 		
 		ETFMargin={}
 		for j,d in enumerate(self.BTdata.BackTestInterval):
-			ETFMargin[j]=QTableWidgetItem(str(round(self.BTdata.ETFMarginAccountSum_.loc[d,'ETFMarginAccount'],4)))
+			ETFMargin[j]=QTableWidgetItem(str(round(self.BTdata.ETFMarginSum_.loc[d,'ETFMargin'],4)))
 			ETFMargin[j].setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
 			self.AccountTableWidget.setItem(j,6,ETFMargin[j])
 		OptionMargin={}
