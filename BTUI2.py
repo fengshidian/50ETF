@@ -600,8 +600,7 @@ class Details(QWidget):
 		self.canvas=FigureCanvas(self.figure)
 		t=self.BTdata.BackTestInterval
 		s1_1=self.BTdata.yield_rate_['yield_rate']
-		temp=self.BTdata.realizedVolatility.underlying[t[0]:t[-1]]
-		s1_2=(temp/temp.iloc[0]-1)['spot']
+		s1_2=self.BTdata.bench_['spot']
 		
 		s2_1=self.BTdata.OptionTradeBuyVolume_['TradeVolume']
 		s2_2=self.BTdata.OptionTradeSellVolume_['TradeVolume']

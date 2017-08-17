@@ -25,6 +25,7 @@ class BackTestData:
 		self.optioncost_=optioncost[0]+optioncost[1]+optioncost[2]
 		self.data=dt.sheetData(costrate)
 		self.realizedVolatility=dt.realizedVolatility()
+		self.winddata=dt.winddata()
 		self.sheet=self.data.delta_sheet_[self.start:self.end]
 		self.BackTestInterval=self.data.delta_sheet_[self.start:self.end].index
 		self.underlying=pd.DataFrame(self.realizedVolatility.underlying,index=self.BackTestInterval)
@@ -46,7 +47,24 @@ class BackTestData:
 		self.BT_MarginAccount_sheet_=pd.DataFrame(self.data.MarginAccount_sheet_,index=self.BackTestInterval).fillna(0)
 		self.BT_InitialAccount_sheet_=pd.DataFrame(self.data.InitialAccount_sheet_,index=self.BackTestInterval).fillna(0)
 		self.BT_ContractUnit_sheet_=pd.DataFrame(self.data.ContractUnit_sheet_,index=self.BackTestInterval).fillna(0)
-	###策略头寸	
+		temp=self.realizedVolatility.underlying[self.start:self.end]
+		self.bench_=(temp/temp.iloc[0]-1)
+	###策略头寸
+	def ichangeplus(self,i):
+		if i[-1]<0:
+			i.append(i[-1]-1)
+		elif i[-1]>0:
+			i.append(i[-1]+1)
+		else:
+			pass
+	def ichangeminus(self,i):
+		if i[-1]<0:
+			i.append(i[-1]+1)
+		elif i[-1]>0:
+			i.append(i[-1]-1)
+		else:
+			pass
+	
 	def OptionPosition(self):
 		self.OptionPosition={}
 		self.temp_optioninhand=[]
@@ -59,16 +77,31 @@ class BackTestData:
 			optioninhand=[]
 			
 			for option in self.data.option_names:
+				i=[0]
 				if option in set(self.data.options_in_startdate[latest_issue_date]+self.temp_optioninhand)-set(self.temp_exitoption):
-					if self.data.ptmtradeday_sheet_.loc[date,option]>30 and abs(self.BT_delta_sheet_.loc[date,option])<=0.8:
-						self.OptionPosition[option].append(-10)
-						optioninhand.append(option)
-					elif self.data.ptmtradeday_sheet_.loc[date,option]==1:
-						self.OptionPosition[option].append(0)
+					if self.realizedVolatility.VolForecast.loc[date,'spot']
+					if self.BT_impliedVolatility_sheet_.loc[date,option]>=self.winddata.wind_impliedVolatility_sheet_.loc[date,option]*0.9:
+						i.append(i[-1]+1)
+					elif self.BT_impliedVolatility_sheet_.loc[date,option]<=self.winddata.wind_impliedVolatility_sheet_.loc[date,option]*1.1:
+						i.append(i[-1]-1)
 					else:
-						self.OptionPosition[option].append(0)
+						pass
+					if abs(self.BT_delta_sheet_.loc[date,option])<0.8:
+						self.ichangeplus(i)
+					else:
+						self.ichangeminus(i)
+					if self.data.ptmtradeday_sheet_.loc[date,option]>15:
+						self.ichangeplus(i)
+					else:
+						i.append(0)
+					self.OptionPosition[option].append(-i[-1]*10)
+
+					optioninhand.append(option)
+					if i[-1]==0:
 						self.temp_exitoption.append(option)
+						
 				else:
+			
 					self.OptionPosition[option].append(0)
 			self.temp_optioninhand=optioninhand
 			
@@ -609,6 +642,8 @@ class BackTestData:
 		#年化收益率
 		self.yield_rate_to_year=[(a/self.capital_temp-1)/(i+1)*252 for i,a in enumerate(self.AssetSum_['Asset'])]
 		self.yield_rate_to_year_=pd.DataFrame(self.yield_rate_to_year,index=self.BackTestInterval,columns=['yield_rate'])
+		
+		
 			
 	def MaxDrawback(self):
 		self.maxdrawback=[]

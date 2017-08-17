@@ -18,6 +18,7 @@ import time
 class option(QWidget):
 	def __init__(self,sheetData):
 		super(option,self).__init__()
+		
 		self.sheetData=sheetData
 		self.originalData=self.sheetData.dataprocess
 		self.sheet=self.originalData.sheet
@@ -681,7 +682,8 @@ class optionAnalysis(QWidget):
 if __name__=='__main__':
 	sns.set(color_codes=True)
 	app=QApplication(sys.argv)
-	sheetData=dt.sheetData()
+	costrate=0.0025
+	sheetData=dt.sheetData(costrate)
 	ex=option(sheetData)
 	sys.exit(app.exec_())
 

@@ -466,6 +466,7 @@ class sheetData:
 class realizedVolatility:
 	def __init__(self):
 		self.dataCreate()
+		self.Forecast()
 	def dataCreate(self):
 		underlying=pd.read_excel('option.xlsx',sheetname='underlying')
 		index_temp=pd.DatetimeIndex(underlying[8:].index)
@@ -477,8 +478,23 @@ class realizedVolatility:
 		self.realizedVol_30=underlyingYieldRate.rolling(window=30,center=False).std()*np.sqrt(252)
 		self.realizedVol_20=underlyingYieldRate.rolling(window=20,center=False).std()*np.sqrt(252)
 		self.realizedVol_10=underlyingYieldRate.rolling(window=10,center=False).std()*np.sqrt(252)
+
+		self.realizedVol_day_90=underlyingYieldRate.rolling(window=90,center=False).std()
+		self.realizedVol_day_60=underlyingYieldRate.rolling(window=60,center=False).std()
+		self.realizedVol_day_30=underlyingYieldRate.rolling(window=30,center=False).std()
+		self.realizedVol_day_20=underlyingYieldRate.rolling(window=20,center=False).std()
+		self.realizedVol_day_10=underlyingYieldRate.rolling(window=10,center=False).std()
 		temp=pd.concat([self.realizedVol_90,self.realizedVol_60,self.realizedVol_30,self.realizedVol_20,self.realizedVol_10],axis=1)
 		self.realizedVol=pd.DataFrame(np.matrix(temp),index=temp.index,columns=['realizedVol_90','realizedVol_60','realizedVol_30','realizedVol_20','realizedVol_10'])
+	def Forecast(self):
+		vol_fore=[]
+		test=self.realizedVolatility.underlyingYieldRate[30:]
+		for i,j in enumerate(test.index):
+    			train_=data.loc[:j].iloc[-30:]
+    			am=arch.arch_model(train_)
+    			res=am.fit()
+    			vol_fore.append(res.params['omega']+res.params['alpha[1]']*res.resid[-1]**2+res.params['beta[1]']*res.conditional_volatility[-1]**2)
+		self.VolForecast=0.01*np.sqrt(pd.DataFrame(vol_fore[:-1],index=test.index[1:],columns=['vol_fore']))
 		
 
 class winddata:
