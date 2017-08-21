@@ -217,7 +217,7 @@ class option(QWidget):
 					optionType=1
 				else:
 					optionType=0
-				self.dataCreate=dt.simulation(self.sheet[j],strike,optionType,self.prespot,contractUnit)
+				self.dataCreate=dt.simulation(self.sheet[j],strike,optionType,self.prespot,contractUnit,self.costrate)
 				self.OptionTypeEdit.setText(u'认'+self.OptionProduct[5])
 				self.UnderlyingProductEdit.setText('50ETF')
 				self.OptionStartDateEdit.setText(str(self.dataCreate.data.index[0])[:10])

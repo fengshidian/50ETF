@@ -50,21 +50,24 @@ class BackTestData:
 		temp=self.realizedVolatility.underlying[self.start:self.end]
 		self.bench_=(temp/temp.iloc[0]-1)
 	###策略头寸
-	def ichangeplus(self,i):
+	def ichange(self,i,n):
 		if i[-1]<0:
-			i.append(i[-1]-1)
-		elif i[-1]>0:
-			i.append(i[-1]+1)
+			i.append(i[-1]-n)
 		else:
-			pass
-	def ichangeminus(self,i):
-		if i[-1]<0:
-			i.append(i[-1]+1)
-		elif i[-1]>0:
-			i.append(i[-1]-1)
-		else:
-			pass
+			i.append(i[-1]+n)
 	
+	def symoption(self,option):
+		if option[5]==u'购':
+			temp=option[:5]+u'沽'+option[6:]
+		else:
+			temp=option[:5]+u'购'+option[6:]
+		return temp
+	def append(self,num,list_,position):
+		if num+1>len(list_):
+			list_.append(position)
+		else:
+			list_[-1]=position
+		return list_
 	def OptionPosition(self):
 		self.OptionPosition={}
 		self.temp_optioninhand=[]
@@ -75,36 +78,182 @@ class BackTestData:
 			_date=str(date)[:10]
 			latest_issue_date=self.data.option_startdate[self.data.option_startdate<=_date].iloc[-1]
 			optioninhand=[]
+			temp={}
+			for option in self.data.option_names:
+				if option in set(self.data.options_in_startdate[latest_issue_date]+self.temp_optioninhand)-set(self.temp_exitoption):
+					if abs(self.BT_delta_sheet_.loc[date,option])>0.7:
+						self.append(number,self.OptionPosition[option],0)
+						self.temp_exitoption.append(option)
+						self.temp_exitoption.append(self.symoption(option))
+						self.append(number,self.OptionPosition[self.symoption(option)],0)
+					elif self.data.ptmtradeday_sheet_.loc[date,option]<=15:
+						self.append(number,self.OptionPosition[option],0)
+						self.temp_exitoption.append(option)
+						self.temp_exitoption.append(self.symoption(option))
+						self.append(number,self.OptionPosition[self.symoption(option)],0)
+							
+					else:
+						if self.realizedVolatility.VolForecast.loc[date,'vol_fore']-self.realizedVolatility.realizedVol_day_10.loc[date,'spot']>=0.01 or self.realizedVolatility.realizedVol_day_10.loc[date,'spot']>=0.025:#预测波动率上升 或 波动率处于高位
+							if self.realizedVolatility.underlyingYieldRate.loc[date,'spot']>=0.05:
+								if option[5]==u'购':
+									self.append(number,self.OptionPosition[option],0)
+									#optioninhand.append(option)
+								else:
+									self.append(number,self.OptionPosition[option],-30)
+									optioninhand.append(option)
+							elif self.realizedVolatility.underlyingYieldRate.loc[date,'spot']>=0.02:
+								if option[5]==u'购':
+									self.append(number,self.OptionPosition[option],0)
+									#optioninhand.append(option)
+								else:
+									self.append(number,self.OptionPosition[option],-20)
+									optioninhand.append(option)
+							elif self.realizedVolatility.underlyingYieldRate.loc[date,'spot']<=-0.05:
+								if option[5]==u'购':
+									self.append(number,self.OptionPosition[option],-30)
+									optioninhand.append(option)
+								else:
+									self.append(number,self.OptionPosition[option],0)
+									#optioninhand.append(option)
+							elif self.realizedVolatility.underlyingYieldRate.loc[date,'spot']<=-0.02:
+								if option[5]==u'购':
+									self.append(number,self.OptionPosition[option],-20)
+									optioninhand.append(option)
+								else:
+									self.append(number,self.OptionPosition[option],0)
+									#optioninhand.append(option)
+							else:
+								
+								for k,option1 in enumerate(self.data.options_in_startdate[latest_issue_date]):
+									if option==option1:
+										for option2 in self.data.options_in_startdate[latest_issue_date]:
+											
+											if option1[:5]==option2[:5] and option1[5]!=option2[5] and option1[6:]==option2[6:]:
+												if option2 in self.temp_exitoption:
+													pass
+												else:
+													if option1[5]==u'购':
+														self.append(number,self.OptionPosition[option1],0)
+														self.append(number,self.OptionPosition[option2],0)
+														#optioninhand.append(option1)
+														#optioninhand.append(option2)
+													else:
+														self.append(number,self.OptionPosition[option1],0)
+														self.append(number,self.OptionPosition[option2],0)
+						else:
+							for k,option1 in enumerate(self.data.options_in_startdate[latest_issue_date]):
+								if option==option1:
+									for option2 in self.data.options_in_startdate[latest_issue_date]:
+										
+										if option1[:5]==option2[:5] and option1[5]!=option2[5] and option1[6:]==option2[6:]:
+											if option2 in self.temp_exitoption:
+												pass
+											else:
+												if option1[5]==u'购':
+													self.append(number,self.OptionPosition[option1],-10)
+													self.append(number,self.OptionPosition[option2],-20)
+													optioninhand.append(option1)
+													optioninhand.append(option2)
+												else:	
+													self.append(number,self.OptionPosition[option1],-20)
+													self.append(number,self.OptionPosition[option2],-10)
 			
+				else:
+					self.append(number,self.OptionPosition[option],0)
+
+			self.temp_option=optioninhand
+				
+
+			'''
 			for option in self.data.option_names:
 				i=[0]
 				if option in set(self.data.options_in_startdate[latest_issue_date]+self.temp_optioninhand)-set(self.temp_exitoption):
-					if self.realizedVolatility.VolForecast.loc[date,'spot']
-					if self.BT_impliedVolatility_sheet_.loc[date,option]>=self.winddata.wind_impliedVolatility_sheet_.loc[date,option]*0.9:
-						i.append(i[-1]+1)
-					elif self.BT_impliedVolatility_sheet_.loc[date,option]<=self.winddata.wind_impliedVolatility_sheet_.loc[date,option]*1.1:
-						i.append(i[-1]-1)
+					
+					if self.realizedVolatility.VolForecast.loc[date,'vol_fore']-self.realizedVolatility.realizedVol_day_10.loc[date,'spot']>=0.01 or self.realizedVolatility.realizedVol_day_10.loc[date,'spot']>=0.025:#预测波动率上升 或 波动率处于高位				
+						if self.realizedVolatility.underlyingYieldRate.loc[date,'spot']>=0.05:
+							self.opn='call'
+							self.ichange(i,5)
+						elif self.realizedVolatility.underlyingYieldRate.loc[date,'spot']>=0.02:
+							self.opn='call'
+							self.ichange(i,3)
+						elif self.realizedVolatility.underlyingYieldRate.loc[date,'spot']<=-0.05:
+							self.opn='put'
+							self.ichange(i,5)
+						elif self.realizedVolatility.underlyingYieldRate.loc[date,'spot']<=-0.02:
+							self.opn='put'
+							self.ichange(i,3)
+						else:
+							self.opn='vol'
+							self.ichange(i,1)
+					else:
+						self.opn='stable'
+						
+					
+
+
+					if self.BT_impliedVolatility_sheet_.loc[date,option]<=self.realizedVolatility.realizedVol_day_10.loc[date,'spot']:
+						self.ichange(i,1)
+					else:
+						
+						self.ichange(i,-1)
+											
+
+
+					#delta过大或到期期限过短都不进行交易
+					if abs(self.BT_delta_sheet_.loc[date,option])<0.8:
+						self.ichange(i,0)
+					else:
+						self.opn='NoTrade'
+					if self.data.ptmtradeday_sheet_.loc[date,option]>15:
+						self.ichange(i,0)
+					else:
+						self.opn='NoTrade'
+
+
+					#
+					if self.opn=='call':
+						if option[5]==u'购':
+							if number==0:
+								self.OptionPosition[option].append(i[-1]*10)
+							else:
+								self.OptionPosition[option].append(i[-1]*10)
+							optioninhand.append(option)
+						else:
+							self.OptionPosition[option].append(-i[-1]*10)
+							optioninhand.append(option)
+					
+					elif self.opn=='put':
+						if option[5]==u'购':
+							self.OptionPosition[option].append(-i[-1]*10)
+							optioninhand.append(option)
+						else:
+							if number==0:
+								self.OptionPosition[option].append(i[-1]*10)
+							else:
+								self.OptionPosition[option].append(i[-1]*10)
+							optioninhand.append(option)
+							
+					elif self.opn=='vol':
+						self.OptionPosition[option].append(-i[-1]*10)
+						optioninhand.append(option)
+					elif self.opn=='stable':
+						
+
+
+
+						
+						optioninhand.append(option)
+					elif self.opn=='NoTrade':
+						self.OptionPosition[option].append(0)
 					else:
 						pass
-					if abs(self.BT_delta_sheet_.loc[date,option])<0.8:
-						self.ichangeplus(i)
-					else:
-						self.ichangeminus(i)
-					if self.data.ptmtradeday_sheet_.loc[date,option]>15:
-						self.ichangeplus(i)
-					else:
-						i.append(0)
-					self.OptionPosition[option].append(-i[-1]*10)
-
-					optioninhand.append(option)
-					if i[-1]==0:
-						self.temp_exitoption.append(option)
-						
+					
 				else:
 			
 					self.OptionPosition[option].append(0)
+					
 			self.temp_optioninhand=optioninhand
-			
+			'''	
 				
 		self.Position_=pd.DataFrame(self.OptionPosition,index=self.BackTestInterval,columns=self.data.option_names)
 		self.PositionDiff_=self.Position_.diff(1)

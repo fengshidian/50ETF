@@ -1,17 +1,12 @@
 #encoding=utf-8
 
-
-
 import sys
 import matplotlib
-import pandas as pd
 import numpy as np
-import re
 matplotlib.use("Qt5Agg")
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import seaborn as sns
 from QuantLib import *
