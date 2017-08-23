@@ -468,10 +468,16 @@ class realizedVolatility:
 	def __init__(self):
 		self.dataCreate()
 		self.Forecast()
+		self.factor()
+		self.function()
+		self.corr()
+		self.forecast()
 	def dataCreate(self):
-		underlying=pd.read_excel('option.xlsx',sheetname='underlying')
-		index_temp=pd.DatetimeIndex(underlying[8:].index)
-		self.underlying=pd.DataFrame(np.matrix(underlying[8:]),index=index_temp,columns=['spot'])
+		#sheet_temp=pd.read_excel('option.xlsx',sheetname='underlying')
+		sheet_temp=pd.read_excel('temp.xlsx')
+		index_temp=pd.DatetimeIndex(sheet_temp[8:].index)
+		self.sheet_temp=pd.DataFrame(np.matrix(sheet_temp[8:]),index=index_temp,columns=['open','high','low','close','volume','total_turnover'])
+		self.underlying=pd.DataFrame(np.matrix(self.sheet_temp.loc[:,'close']),columns=self.sheet_temp.index,index=['spot']).T
 		self.underlyingYieldRate=np.log(self.underlying.pct_change(1)+1)
 		
 		self.realizedVol_90=self.underlyingYieldRate.rolling(window=90,center=False).std()*np.sqrt(252)
@@ -491,11 +497,115 @@ class realizedVolatility:
 		vol_fore=[]
 		test=self.underlyingYieldRate[30:]
 		for i,j in enumerate(test.index):
-    			train_=test.loc[:j].iloc[-30:]
+    			train_=test.loc[:j].iloc[-30:]*100
     			am=arch.arch_model(train_)
     			res=am.fit()
-    			vol_fore.append(res.params['omega']+res.params['alpha[1]']*res.resid[-1]**2+res.params['beta[1]']*res.conditional_volatility[-1]**2)
-		self.VolForecast=0.01*np.sqrt(pd.DataFrame(vol_fore[:-1],index=test.index[1:],columns=['vol_fore']))
+    			vol_fore.append(res.params['omega']+res.params['alpha[1]']*np.mean(res.resid[-10:])**2+res.params['beta[1]']*np.mean(res.conditional_volatility[-10:])**2)
+		self.VolForecast=0.01*np.sqrt(pd.DataFrame(vol_fore,index=test.index,columns=['vol_fore']))
+
+	#因子指标计算
+	def factor(self):
+		self.P=pd.DataFrame(self.sheet_temp.loc[:,'open'],columns=['open'])
+		self.H=pd.DataFrame(self.sheet_temp.loc[:,'high'],columns=['high'])
+		self.L=pd.DataFrame(self.sheet_temp.loc[:,'low'],columns=['low'])
+		self.C=pd.DataFrame(self.sheet_temp.loc[:,'close'],columns=['close'])
+		self.V=pd.DataFrame(self.sheet_temp.loc[:,'volume'],columns=['volume'])
+		self.TurnOver=pd.DataFrame(np.matrix(self.sheet_temp.loc[:,'total_turnover']),columns=self.sheet_temp.index,index=['TurnOver']).T
+		self.yield_rate=self.C['close']/self.P['open']-1
+		self.yield_rate=pd.DataFrame(self.yield_rate,columns=['yield_rate'])
+	
+	def ADV_20(self,n):
+		mean=pd.rolling_mean(self.V,n)
+		ADV=self.V/mean
+		return pd.DataFrame(ADV.values,index=ADV.index,columns=['ADV'])
+	def TurnOver_20(self,n):
+    		TurnOver_20=pd.rolling_mean(self.TurnOver,5)/pd.rolling_mean(self.TurnOver,n)
+   	 	TurnOver_20=TurnOver_20
+   	 	return pd.DataFrame(TurnOver_20.values,index=TurnOver_20.index,columns=['TurnOver']) 
+	def RSI_20(self,n):
+    		p=pd.DataFrame((self.C['close']-self.P['open'])/self.P['open'],index=self.C.index,columns=['yieldrate'])
+    		p_max=pd.DataFrame(np.zeros(p.shape),index=p.index,columns=p.columns)
+    		p_abs=p
+    		for i in range(len(p)):
+        		j=np.logical_and(p.ix[i]>0,p.ix[i]>0)
+        		p_max.ix[i,j]=p.ix[i,j]
+    		for i in range(len(p)):
+        		j=np.logical_and(p.ix[i]<0,p.ix[i]<0)
+        		p_abs.ix[i,j]=abs(p.ix[i,j])
+    		RSI=pd.rolling_mean(p_max,n)/pd.rolling_mean(p_abs,n)*100
+    		return pd.DataFrame(RSI.values,index=RSI.index,columns=['RSI'])
+	def RE_20(self,n):
+		return pd.DataFrame(self.C.pct_change(n).values,index=self.C.index,columns=['RE'])
+	def VMC(self):
+		return pd.DataFrame((self.TurnOver['TurnOver']/self.V['volume']-self.C['close']),columns=['VMC'])
+	def LDECC_5(self):
+    		p=pd.DataFrame((self.C['close']-self.P['open'])/self.P['open'],columns=['yieldrate'])
+    		def rolling_5(A):#A为dataFrame 返回Series index=A.columns
+        		return 1*A.iloc[-5]+2*A.iloc[-4]+3*A.iloc[-3]+4*A.iloc[-2]+5*A.iloc[-1]
+    		MM=pd.DataFrame(rolling_5(p.iloc[-len(self.H)+1:-len(self.H)+6,:])).T
+    		for i in range(6,len(self.H)-1):
+        		MM=np.r_[MM,pd.DataFrame(rolling_5(p.iloc[(-len(self.H)+i-4):(-len(self.H)+i+1),:])).T]
+    		MM=np.r_[MM,pd.DataFrame(rolling_5(p.iloc[-5:,:])).T]
+    		return pd.DataFrame(MM,columns=['LDECC'],index=self.H.index[5:])
+	def function(self):
+		#self.func=pd.Series([self.ADV_20(20).dropna(),self.TurnOver_20(20).dropna(),self.RSI_20(20).dropna(),self.RE_20(20).dropna(),self.VMC().dropna(),self.LDECC_5().dropna()],index=['ADV','TurnOver','RSI','RE','VMC','LDECC'])
+		self.func_name=['ADV_20(20)','ADV_20(15)','ADV_20(10)','ADV_20(5)','TurnOver_20(20)','TurnOver_20(15)','TurnOver_20(10)','RSI_20(20)','RSI_20(15)','RSI_20(10)','RSI_20(5)','RE_20(20)','RE_20(15)','RE_20(10)','RE_20(5)','VMC()','LDECC_5()']
+		self.func=pd.Series([self.ADV_20(20).dropna(),self.ADV_20(15).dropna(),self.ADV_20(10).dropna(),self.ADV_20(5).dropna(),self.TurnOver_20(20).dropna(),self.TurnOver_20(15).dropna(),self.TurnOver_20(10).dropna(),self.RSI_20(20).dropna(),self.RSI_20(15).dropna(),self.RSI_20(10).dropna(),self.RSI_20(5).dropna(),self.RE_20(20).dropna(),self.RE_20(15).dropna(),self.RE_20(10).dropna(),self.RE_20(5).dropna(),self.VMC().dropna(),self.LDECC_5().dropna()],index=self.func_name)
+	def corr(self):
+		temp=pd.concat([self.yield_rate,self.ADV_20(20),self.ADV_20(15),self.ADV_20(10),self.ADV_20(5),self.TurnOver_20(20),self.TurnOver_20(15),self.TurnOver_20(10),self.RSI_20(20),self.RSI_20(15),self.RSI_20(10),self.RSI_20(5),self.RE_20(20),self.RE_20(15),self.RE_20(10),self.RE_20(5),self.VMC(),self.LDECC_5()],axis=1)
+		temp=pd.DataFrame(np.matrix(temp),index=temp.index,columns=['yield_rate','ADV_20(20)','ADV_20(15)','ADV_20(10)','ADV_20(5)','TurnOver_20(20)','TurnOver_20(15)','TurnOver_20(10)','RSI_20(20)','RSI_20(15)','RSI_20(10)','RSI_20(5)','RE_20(20)','RE_20(15)','RE_20(10)','RE_20(5)','VMC()','LDECC_5()'])
+		#temp=pd.concat([self.yield_rate,self.ADV_20(20),self.TurnOver_20(20),self.RSI_20(20),self.RE_20(20),self.VMC(),self.LDECC_5()],axis=1)
+		ADV_20_corr=pd.rolling_corr(temp['yield_rate'],temp['ADV_20(20)'],10)
+		ADV_15_corr=pd.rolling_corr(temp['yield_rate'],temp['ADV_20(15)'],10)
+		ADV_10_corr=pd.rolling_corr(temp['yield_rate'],temp['ADV_20(10)'],10)
+		ADV_5_corr=pd.rolling_corr(temp['yield_rate'],temp['ADV_20(5)'],10)
+	
+		TurnOver_20_corr=pd.rolling_corr(temp['yield_rate'],temp['TurnOver_20(20)'],10)
+		TurnOver_15_corr=pd.rolling_corr(temp['yield_rate'],temp['TurnOver_20(15)'],10)
+		TurnOver_10_corr=pd.rolling_corr(temp['yield_rate'],temp['TurnOver_20(10)'],10)
+
+		RSI_20_corr=pd.rolling_corr(temp['yield_rate'],temp['RSI_20(20)'],10)
+		RSI_15_corr=pd.rolling_corr(temp['yield_rate'],temp['RSI_20(15)'],10)
+		RSI_10_corr=pd.rolling_corr(temp['yield_rate'],temp['RSI_20(10)'],10)
+		RSI_5_corr=pd.rolling_corr(temp['yield_rate'],temp['RSI_20(5)'],10)
+
+		RE_20_corr=pd.rolling_corr(temp['yield_rate'],temp['RE_20(20)'],10)
+		RE_15_corr=pd.rolling_corr(temp['yield_rate'],temp['RE_20(15)'],10)
+		RE_10_corr=pd.rolling_corr(temp['yield_rate'],temp['RE_20(10)'],10)
+		RE_5_corr=pd.rolling_corr(temp['yield_rate'],temp['RE_20(5)'],10)
+
+		VMC_corr=pd.rolling_corr(temp['yield_rate'],temp['VMC()'],10)
+		LDECC_corr=pd.rolling_corr(temp['yield_rate'],temp['LDECC_5()'],10)
+		corr=pd.concat([ADV_20_corr,ADV_15_corr,ADV_10_corr,ADV_5_corr,TurnOver_20_corr,TurnOver_15_corr,TurnOver_10_corr,RSI_20_corr,RSI_15_corr,RSI_10_corr,RSI_5_corr,RE_20_corr,RE_15_corr,RE_10_corr,RE_5_corr,VMC_corr,LDECC_corr],axis=1).dropna()
+		self.corr=pd.DataFrame(np.matrix(corr),index=corr.index,columns=self.func_name)
+	def unique(self,A):
+    		D=[]
+		temp1_2=[]
+    		temp2=[]
+    		for i in range(len(A)):
+        		if A[i][:2]  not in temp1_2:
+            			temp1_2.append(A[i][:2])
+            			temp2.append(A[i])
+    		return temp2
+	def forecast(self):
+		fore=[]
+		for num,i in enumerate(self.corr.index[20:]):
+			pp=[]
+			temp_=self.unique(self.corr[20:].iloc[num].abs().sort_values(ascending=False).index)[:3]
+			for j in temp_:
+				pp.append(self.func[j].loc[:i].iloc[-20:])
+			constant=np.ones(len(pp[0]))
+			constant=pd.DataFrame(constant,index=pp[0].index,columns=['constant'])
+			ppp=pd.concat([constant,pp[0],pp[1],pp[2]],axis=1)
+			X=ppp.dropna()
+			Y=self.yield_rate.loc[:i].iloc[-20:]
+			temp1=np.array(X.T.dot(X).values,dtype='float')
+			temp2=np.array(X.T.dot(Y).values,dtype='float')
+			beta=np.linalg.inv(temp1).dot(temp2)
+			X_=np.mean(X[-5:])
+			Y_=X_.dot(beta)
+			fore.append(Y_)
+		self.fore=pd.DataFrame(fore,index=self.corr[20:].index,columns=['fore'])			
 		
 
 class winddata:
