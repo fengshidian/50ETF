@@ -38,7 +38,13 @@ class dataProcess:
         		new_value=np.matrix(new_sheet[8:])
         		temp=pd.DataFrame(new_value,index=new_index,columns=['mktprice','ptmtradeday'])
 			temp['ptmtradeday'][temp['ptmtradeday']<2]=np.nan
-        		temp=pd.concat([temp,spot_],axis=1).dropna(axis=0)
+			#print new_sheet.columns[0],pd.concat([temp,spot_],axis=1).dropna(axis=0).index,pd.concat([temp,spot_],axis=1)
+			if len(pd.concat([temp,spot_],axis=1).dropna(axis=0).index)>=10:
+        			min_=pd.concat([temp,spot_],axis=1).dropna(axis=0).index[0]
+				max_=pd.concat([temp,spot_],axis=1).dropna(axis=0).index[-1]
+				temp=pd.concat([temp,spot_],axis=1)[min_:max_].fillna(method='ffill')
+			else:
+				temp=pd.concat([temp,spot_],axis=1)[min_:max_].dropna()
         #交易数据小于10个交易日的，剔除。
         		if len(temp.index)>=10:
             			self.sheet.append(temp)
@@ -74,8 +80,8 @@ class simulation:
         	#self.capital_account()
 		#self.WW_capital_account()
         	#self.Zakamouline_capital_account()
-		self.WW_band(10)
-        	self.Zakamouline_band(10)
+		#self.WW_band(10)
+        	#self.Zakamouline_band(10)
         	self.margin_account()
 		self.ContractUnit()
     #求delta
@@ -107,7 +113,7 @@ class simulation:
                 		calloption.setPricingEngine(engine)
                 		#当隐含波动率不存在时，令隐含波动率为0.0001，否则计算no-trade region会报错
                 		if calloption.NPV()>=self.mktprice[i]:
-                    			vol=0.0001
+                    			vol=0.0000
                     			#print 'call',date,'theoryvalue:',calloption.NPV(),'mktprice:',self.mktprice[i],self.spot[i]
                 		else:
                     			vol=calloption.impliedVolatility(self.mktprice[i],process,1.0e-3,1000,0.0,50)
@@ -116,7 +122,7 @@ class simulation:
                 		putoption.setPricingEngine(engine)
 
                 		if putoption.NPV()>self.mktprice[i]:
-                    			vol=0.0001
+                    			vol=0.0000
                     			#print 'put',date,'theoryvalue:',putoption.NPV(),'mktprice',self.mktprice[i],self.spot[i]
                 		else:
                     			vol=putoption.impliedVolatility(self.mktprice[i],process,1.0e-3,1000,0.0,50)
@@ -364,14 +370,14 @@ class sheetData:
 		vega_sheet=pd.DataFrame()
 		theta_sheet=pd.DataFrame()
 
-		WWBandInf_sheet=pd.DataFrame()
-		WWBandSup_sheet=pd.DataFrame()
-		WWDeltaHold_sheet=pd.DataFrame()
+		#WWBandInf_sheet=pd.DataFrame()
+		#WWBandSup_sheet=pd.DataFrame()
+		#WWDeltaHold_sheet=pd.DataFrame()
 
-		ZakamoulineBandInf_sheet=pd.DataFrame()
-		ZakamoulineBandSup_sheet=pd.DataFrame()
-		ZakamoulineDeltaHold_sheet=pd.DataFrame()
-		ZakamoulineDelta_sheet=pd.DataFrame()
+		#ZakamoulineBandInf_sheet=pd.DataFrame()
+		#ZakamoulineBandSup_sheet=pd.DataFrame()
+		#ZakamoulineDeltaHold_sheet=pd.DataFrame()
+		#ZakamoulineDelta_sheet=pd.DataFrame()
 
 		impliedVolatility_sheet=pd.DataFrame()
 		theoryvalue_sheet=pd.DataFrame()
@@ -408,17 +414,17 @@ class sheetData:
 			gamma_sheet=pd.concat([gamma_sheet,temp.gamma_],axis=1)
 			vega_sheet=pd.concat([vega_sheet,temp.vega_],axis=1)
 			theta_sheet=pd.concat([theta_sheet,temp.theta_],axis=1)
-			WWBandInf_sheet=pd.concat([WWBandInf_sheet,temp.WW_band_inf_],axis=1)
-			WWBandSup_sheet=pd.concat([WWBandSup_sheet,temp.WW_band_sup_],axis=1)
-			WWDeltaHold_sheet=pd.concat([WWDeltaHold_sheet,temp.WWDeltaHold_],axis=1)
+			#WWBandInf_sheet=pd.concat([WWBandInf_sheet,temp.WW_band_inf_],axis=1)
+			#WWBandSup_sheet=pd.concat([WWBandSup_sheet,temp.WW_band_sup_],axis=1)
+			#WWDeltaHold_sheet=pd.concat([WWDeltaHold_sheet,temp.WWDeltaHold_],axis=1)
 			MarginAccount_sheet=pd.concat([MarginAccount_sheet,temp.margin_deposit_],axis=1)
 			InitialAccount_sheet=pd.concat([InitialAccount_sheet,temp.initial_margin_],axis=1)
 			ContractUnit_sheet=pd.concat([ContractUnit_sheet,temp.unit_],axis=1)
 
-			ZakamoulineBandInf_sheet=pd.concat([ZakamoulineBandInf_sheet,temp.Zakamouline_band_inf_],axis=1)
-			ZakamoulineBandSup_sheet=pd.concat([ZakamoulineBandSup_sheet,temp.Zakamouline_band_sup_],axis=1)
-			ZakamoulineDeltaHold_sheet=pd.concat([ZakamoulineDeltaHold_sheet,temp.ZakamoulineDeltaHold_],axis=1)
-			ZakamoulineDelta_sheet=pd.concat([ZakamoulineDelta_sheet,temp.Zakamouline_delta_],axis=1)
+			#ZakamoulineBandInf_sheet=pd.concat([ZakamoulineBandInf_sheet,temp.Zakamouline_band_inf_],axis=1)
+			#ZakamoulineBandSup_sheet=pd.concat([ZakamoulineBandSup_sheet,temp.Zakamouline_band_sup_],axis=1)
+			#ZakamoulineDeltaHold_sheet=pd.concat([ZakamoulineDeltaHold_sheet,temp.ZakamoulineDeltaHold_],axis=1)
+			#ZakamoulineDelta_sheet=pd.concat([ZakamoulineDelta_sheet,temp.Zakamouline_delta_],axis=1)
 
 			impliedVolatility_sheet=pd.concat([impliedVolatility_sheet,temp.implied_],axis=1)
 			theoryvalue_sheet=pd.concat([theoryvalue_sheet,temp.theoryvalue_],axis=1)
@@ -430,14 +436,14 @@ class sheetData:
 		self.vega_sheet_=pd.DataFrame(np.matrix(vega_sheet),index=vega_sheet.index,columns=self.dataprocess.sheet_names)
 		self.theta_sheet_=pd.DataFrame(np.matrix(theta_sheet),index=theta_sheet.index,columns=self.dataprocess.sheet_names)
 		
-		self.WWBandInf_sheet_=pd.DataFrame(np.matrix(WWBandInf_sheet),index=WWBandInf_sheet.index,columns=self.dataprocess.sheet_names)
-		self.WWBandSup_sheet_=pd.DataFrame(np.matrix(WWBandSup_sheet),index=WWBandSup_sheet.index,columns=self.dataprocess.sheet_names)
-		self.WWDeltaHold_sheet_=pd.DataFrame(np.matrix(WWDeltaHold_sheet),index=WWDeltaHold_sheet.index,columns=self.dataprocess.sheet_names)
+		#self.WWBandInf_sheet_=pd.DataFrame(np.matrix(WWBandInf_sheet),index=WWBandInf_sheet.index,columns=self.dataprocess.sheet_names)
+		#self.WWBandSup_sheet_=pd.DataFrame(np.matrix(WWBandSup_sheet),index=WWBandSup_sheet.index,columns=self.dataprocess.sheet_names)
+		#self.WWDeltaHold_sheet_=pd.DataFrame(np.matrix(WWDeltaHold_sheet),index=WWDeltaHold_sheet.index,columns=self.dataprocess.sheet_names)
 
-		self.ZakamoulineBandInf_sheet_=pd.DataFrame(np.matrix(ZakamoulineBandInf_sheet),index=ZakamoulineBandInf_sheet.index,columns=self.dataprocess.sheet_names)
-		self.ZakamoulineBandSup_sheet_=pd.DataFrame(np.matrix(ZakamoulineBandSup_sheet),index=ZakamoulineBandSup_sheet.index,columns=self.dataprocess.sheet_names)
-		self.ZakamoulineDeltaHold_sheet_=pd.DataFrame(np.matrix(ZakamoulineDeltaHold_sheet),index=ZakamoulineDeltaHold_sheet.index,columns=self.dataprocess.sheet_names)
-		self.ZakamoulineDelta_sheet_=pd.DataFrame(np.matrix(ZakamoulineDelta_sheet),index=ZakamoulineDelta_sheet.index,columns=self.dataprocess.sheet_names)		
+		#self.ZakamoulineBandInf_sheet_=pd.DataFrame(np.matrix(ZakamoulineBandInf_sheet),index=ZakamoulineBandInf_sheet.index,columns=self.dataprocess.sheet_names)
+		#self.ZakamoulineBandSup_sheet_=pd.DataFrame(np.matrix(ZakamoulineBandSup_sheet),index=ZakamoulineBandSup_sheet.index,columns=self.dataprocess.sheet_names)
+		#self.ZakamoulineDeltaHold_sheet_=pd.DataFrame(np.matrix(ZakamoulineDeltaHold_sheet),index=ZakamoulineDeltaHold_sheet.index,columns=self.dataprocess.sheet_names)
+		#self.ZakamoulineDelta_sheet_=pd.DataFrame(np.matrix(ZakamoulineDelta_sheet),index=ZakamoulineDelta_sheet.index,columns=self.dataprocess.sheet_names)		
 
 		self.impliedVolatility_sheet_=pd.DataFrame(np.matrix(impliedVolatility_sheet),index=impliedVolatility_sheet.index,columns=self.dataprocess.sheet_names)
 		self.theoryvalue_sheet_=pd.DataFrame(np.matrix(theoryvalue_sheet),index=theoryvalue_sheet.index,columns=self.dataprocess.sheet_names)
@@ -479,6 +485,10 @@ class realizedVolatility:
 		self.sheet_temp=pd.DataFrame(np.matrix(sheet_temp[8:]),index=index_temp,columns=['open','high','low','close','volume','total_turnover'])
 		self.underlying=pd.DataFrame(np.matrix(self.sheet_temp.loc[:,'close']),columns=self.sheet_temp.index,index=['spot']).T
 		self.underlyingYieldRate=np.log(self.underlying.pct_change(1)+1)
+		self.underlyingYieldRate_5=np.log(self.underlying.pct_change(5)+1)
+		self.underlyingYieldRate_10=np.log(self.underlying.pct_change(10)+1)
+		self.underlyingYieldRate_20=np.log(self.underlying.pct_change(20)+1)
+		self.underlyingYieldRate_30=np.log(self.underlying.pct_change(30)+1)
 		
 		self.realizedVol_90=self.underlyingYieldRate.rolling(window=90,center=False).std()*np.sqrt(252)
 		self.realizedVol_60=self.underlyingYieldRate.rolling(window=60,center=False).std()*np.sqrt(252)
@@ -501,7 +511,7 @@ class realizedVolatility:
     			am=arch.arch_model(train_)
     			res=am.fit()
     			vol_fore.append(res.params['omega']+res.params['alpha[1]']*np.mean(res.resid[-10:])**2+res.params['beta[1]']*np.mean(res.conditional_volatility[-10:])**2)
-		self.VolForecast=0.01*np.sqrt(pd.DataFrame(vol_fore,index=test.index,columns=['vol_fore']))
+		self.VolForecast=0.01*np.sqrt(pd.DataFrame(vol_fore,index=test.index,columns=['vol_fore']))*np.sqrt(252)
 
 	#因子指标计算
 	def factor(self):
@@ -512,7 +522,8 @@ class realizedVolatility:
 		self.V=pd.DataFrame(self.sheet_temp.loc[:,'volume'],columns=['volume'])
 		self.TurnOver=pd.DataFrame(np.matrix(self.sheet_temp.loc[:,'total_turnover']),columns=self.sheet_temp.index,index=['TurnOver']).T
 		self.yield_rate=self.C['close']/self.P['open']-1
-		self.yield_rate=pd.DataFrame(self.yield_rate,columns=['yield_rate'])
+		self.yield_rate=pd.DataFrame(np.matrix(self.yield_rate),index=['yield_rate'],columns=self.C.index).T
+		
 	
 	def ADV_20(self,n):
 		mean=pd.rolling_mean(self.V,n)
@@ -552,30 +563,30 @@ class realizedVolatility:
 		self.func_name=['ADV_20(20)','ADV_20(15)','ADV_20(10)','ADV_20(5)','TurnOver_20(20)','TurnOver_20(15)','TurnOver_20(10)','RSI_20(20)','RSI_20(15)','RSI_20(10)','RSI_20(5)','RE_20(20)','RE_20(15)','RE_20(10)','RE_20(5)','VMC()','LDECC_5()']
 		self.func=pd.Series([self.ADV_20(20).dropna(),self.ADV_20(15).dropna(),self.ADV_20(10).dropna(),self.ADV_20(5).dropna(),self.TurnOver_20(20).dropna(),self.TurnOver_20(15).dropna(),self.TurnOver_20(10).dropna(),self.RSI_20(20).dropna(),self.RSI_20(15).dropna(),self.RSI_20(10).dropna(),self.RSI_20(5).dropna(),self.RE_20(20).dropna(),self.RE_20(15).dropna(),self.RE_20(10).dropna(),self.RE_20(5).dropna(),self.VMC().dropna(),self.LDECC_5().dropna()],index=self.func_name)
 	def corr(self):
-		temp=pd.concat([self.yield_rate,self.ADV_20(20),self.ADV_20(15),self.ADV_20(10),self.ADV_20(5),self.TurnOver_20(20),self.TurnOver_20(15),self.TurnOver_20(10),self.RSI_20(20),self.RSI_20(15),self.RSI_20(10),self.RSI_20(5),self.RE_20(20),self.RE_20(15),self.RE_20(10),self.RE_20(5),self.VMC(),self.LDECC_5()],axis=1)
-		temp=pd.DataFrame(np.matrix(temp),index=temp.index,columns=['yield_rate','ADV_20(20)','ADV_20(15)','ADV_20(10)','ADV_20(5)','TurnOver_20(20)','TurnOver_20(15)','TurnOver_20(10)','RSI_20(20)','RSI_20(15)','RSI_20(10)','RSI_20(5)','RE_20(20)','RE_20(15)','RE_20(10)','RE_20(5)','VMC()','LDECC_5()'])
+		temp=pd.concat([self.underlyingYieldRate_5,self.ADV_20(20),self.ADV_20(15),self.ADV_20(10),self.ADV_20(5),self.TurnOver_20(20),self.TurnOver_20(15),self.TurnOver_20(10),self.RSI_20(20),self.RSI_20(15),self.RSI_20(10),self.RSI_20(5),self.RE_20(20),self.RE_20(15),self.RE_20(10),self.RE_20(5),self.VMC(),self.LDECC_5()],axis=1)
+		temp=pd.DataFrame(np.matrix(temp),index=temp.index,columns=['underlyingYieldRate_5','ADV_20(20)','ADV_20(15)','ADV_20(10)','ADV_20(5)','TurnOver_20(20)','TurnOver_20(15)','TurnOver_20(10)','RSI_20(20)','RSI_20(15)','RSI_20(10)','RSI_20(5)','RE_20(20)','RE_20(15)','RE_20(10)','RE_20(5)','VMC()','LDECC_5()'])
 		#temp=pd.concat([self.yield_rate,self.ADV_20(20),self.TurnOver_20(20),self.RSI_20(20),self.RE_20(20),self.VMC(),self.LDECC_5()],axis=1)
-		ADV_20_corr=pd.rolling_corr(temp['yield_rate'],temp['ADV_20(20)'],10)
-		ADV_15_corr=pd.rolling_corr(temp['yield_rate'],temp['ADV_20(15)'],10)
-		ADV_10_corr=pd.rolling_corr(temp['yield_rate'],temp['ADV_20(10)'],10)
-		ADV_5_corr=pd.rolling_corr(temp['yield_rate'],temp['ADV_20(5)'],10)
+		ADV_20_corr=pd.rolling_corr(temp['underlyingYieldRate_5'],temp['ADV_20(20)'],10)
+		ADV_15_corr=pd.rolling_corr(temp['underlyingYieldRate_5'],temp['ADV_20(15)'],10)
+		ADV_10_corr=pd.rolling_corr(temp['underlyingYieldRate_5'],temp['ADV_20(10)'],10)
+		ADV_5_corr=pd.rolling_corr(temp['underlyingYieldRate_5'],temp['ADV_20(5)'],10)
 	
-		TurnOver_20_corr=pd.rolling_corr(temp['yield_rate'],temp['TurnOver_20(20)'],10)
-		TurnOver_15_corr=pd.rolling_corr(temp['yield_rate'],temp['TurnOver_20(15)'],10)
-		TurnOver_10_corr=pd.rolling_corr(temp['yield_rate'],temp['TurnOver_20(10)'],10)
+		TurnOver_20_corr=pd.rolling_corr(temp['underlyingYieldRate_5'],temp['TurnOver_20(20)'],10)
+		TurnOver_15_corr=pd.rolling_corr(temp['underlyingYieldRate_5'],temp['TurnOver_20(15)'],10)
+		TurnOver_10_corr=pd.rolling_corr(temp['underlyingYieldRate_5'],temp['TurnOver_20(10)'],10)
 
-		RSI_20_corr=pd.rolling_corr(temp['yield_rate'],temp['RSI_20(20)'],10)
-		RSI_15_corr=pd.rolling_corr(temp['yield_rate'],temp['RSI_20(15)'],10)
-		RSI_10_corr=pd.rolling_corr(temp['yield_rate'],temp['RSI_20(10)'],10)
-		RSI_5_corr=pd.rolling_corr(temp['yield_rate'],temp['RSI_20(5)'],10)
+		RSI_20_corr=pd.rolling_corr(temp['underlyingYieldRate_5'],temp['RSI_20(20)'],10)
+		RSI_15_corr=pd.rolling_corr(temp['underlyingYieldRate_5'],temp['RSI_20(15)'],10)
+		RSI_10_corr=pd.rolling_corr(temp['underlyingYieldRate_5'],temp['RSI_20(10)'],10)
+		RSI_5_corr=pd.rolling_corr(temp['underlyingYieldRate_5'],temp['RSI_20(5)'],10)
 
-		RE_20_corr=pd.rolling_corr(temp['yield_rate'],temp['RE_20(20)'],10)
-		RE_15_corr=pd.rolling_corr(temp['yield_rate'],temp['RE_20(15)'],10)
-		RE_10_corr=pd.rolling_corr(temp['yield_rate'],temp['RE_20(10)'],10)
-		RE_5_corr=pd.rolling_corr(temp['yield_rate'],temp['RE_20(5)'],10)
+		RE_20_corr=pd.rolling_corr(temp['underlyingYieldRate_5'],temp['RE_20(20)'],10)
+		RE_15_corr=pd.rolling_corr(temp['underlyingYieldRate_5'],temp['RE_20(15)'],10)
+		RE_10_corr=pd.rolling_corr(temp['underlyingYieldRate_5'],temp['RE_20(10)'],10)
+		RE_5_corr=pd.rolling_corr(temp['underlyingYieldRate_5'],temp['RE_20(5)'],10)
 
-		VMC_corr=pd.rolling_corr(temp['yield_rate'],temp['VMC()'],10)
-		LDECC_corr=pd.rolling_corr(temp['yield_rate'],temp['LDECC_5()'],10)
+		VMC_corr=pd.rolling_corr(temp['underlyingYieldRate_5'],temp['VMC()'],10)
+		LDECC_corr=pd.rolling_corr(temp['underlyingYieldRate_5'],temp['LDECC_5()'],10)
 		corr=pd.concat([ADV_20_corr,ADV_15_corr,ADV_10_corr,ADV_5_corr,TurnOver_20_corr,TurnOver_15_corr,TurnOver_10_corr,RSI_20_corr,RSI_15_corr,RSI_10_corr,RSI_5_corr,RE_20_corr,RE_15_corr,RE_10_corr,RE_5_corr,VMC_corr,LDECC_corr],axis=1).dropna()
 		self.corr=pd.DataFrame(np.matrix(corr),index=corr.index,columns=self.func_name)
 	def unique(self,A):
@@ -587,25 +598,32 @@ class realizedVolatility:
             			temp1_2.append(A[i][:2])
             			temp2.append(A[i])
     		return temp2
-	def forecast(self):
+	def fore_(self,n,m):
 		fore=[]
-		for num,i in enumerate(self.corr.index[20:]):
+		for num,i in enumerate(self.corr.index[n:]):
 			pp=[]
-			temp_=self.unique(self.corr[20:].iloc[num].abs().sort_values(ascending=False).index)[:3]
+			temp_=self.unique(self.corr[n:].iloc[num].abs().sort_values(ascending=False).index)[:3]
 			for j in temp_:
-				pp.append(self.func[j].loc[:i].iloc[-20:])
+				pp.append(self.func[j].loc[:i].iloc[-n:])
 			constant=np.ones(len(pp[0]))
 			constant=pd.DataFrame(constant,index=pp[0].index,columns=['constant'])
 			ppp=pd.concat([constant,pp[0],pp[1],pp[2]],axis=1)
 			X=ppp.dropna()
-			Y=self.yield_rate.loc[:i].iloc[-20:]
+			Y=self.underlyingYieldRate_5.loc[:i].iloc[-n:]
 			temp1=np.array(X.T.dot(X).values,dtype='float')
 			temp2=np.array(X.T.dot(Y).values,dtype='float')
 			beta=np.linalg.inv(temp1).dot(temp2)
-			X_=np.mean(X[-5:])
+			X_=np.mean(X[-m:])
 			Y_=X_.dot(beta)
 			fore.append(Y_)
-		self.fore=pd.DataFrame(fore,index=self.corr[20:].index,columns=['fore'])			
+		fore=pd.DataFrame(fore,index=self.corr[n:].index,columns=['fore'])
+		return fore
+	def forecast(self):
+		self.fore_30=self.fore_(30,10)
+		self.fore_10=self.fore_(10,5)
+		self.fore_5=self.fore_(5,3)
+		
+				
 		
 
 class winddata:

@@ -20,6 +20,7 @@ class option(QWidget):
 		super(option,self).__init__()
 		
 		self.sheetData=sheetData
+		self.costrate=self.sheetData.costrate
 		self.originalData=self.sheetData.dataprocess
 		self.sheet=self.originalData.sheet
 		self.sheet_names=self.originalData.sheet_names
@@ -190,7 +191,7 @@ class option(QWidget):
 		hboxDate.addWidget(self.comboDays)
 		grid.addLayout(hboxDate,1,1)
 
-		self.OptionTable=QTableWidget(80,9)
+		self.OptionTable=QTableWidget(150,9)
 		self.OptionTable.setHorizontalHeaderLabels(['期权产品','期权代码','期权类型','delta','gamma','vega','theta','impliedVolatility','theoryvalue'])
 		self.OptionTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 		grid.addWidget(self.OptionTable,12,0,15,9)
@@ -325,13 +326,14 @@ class option(QWidget):
 	def setOptionTable(self,date):
 		dateSelect=self.IndexSeries[date]
 		OptionProduct_=self.sheetData.delta_sheet_.loc[dateSelect].dropna().index
-
+		
 		OptionDelta_=self.sheetData.delta_sheet_.loc[dateSelect].dropna().values
 		OptionGamma_=self.sheetData.gamma_sheet_.loc[dateSelect].dropna().values
 		OptionVega_=self.sheetData.vega_sheet_.loc[dateSelect].dropna().values
 		OptionTheta_=self.sheetData.theta_sheet_.loc[dateSelect].dropna().values
 		OptionImpliedVolatility_=self.sheetData.impliedVolatility_sheet_.loc[dateSelect].dropna().values
 		OptionTheoryValue_=self.sheetData.theoryvalue_sheet_.loc[dateSelect].dropna().values
+		print len(OptionProduct_),len(OptionDelta_),len(OptionImpliedVolatility_)
 		
 		#期权产品		
 		j=0
@@ -393,16 +395,16 @@ class option(QWidget):
 		
 		j=0
 		OptionImpliedVolatility={}
-		for impliedVolatility in OptionImpliedVolatility_:
-			OptionImpliedVolatility[j]=QTableWidgetItem(str(round(impliedVolatility,4))+'/'+str(round(self.winddata.wind_impliedVolatility_sheet_.loc[dateSelect,OptionProduct_[j]],4)))
+		for product in OptionProduct_:
+			OptionImpliedVolatility[j]=QTableWidgetItem(str(round(self.sheetData.impliedVolatility_sheet_.loc[dateSelect,product],4))+'/'+str(round(self.winddata.wind_impliedVolatility_sheet_.loc[dateSelect,OptionProduct_[j]],4)))	
 			OptionImpliedVolatility[j].setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
 			self.OptionTable.setItem(j,7,OptionImpliedVolatility[j])
 			j=j+1
 		
 		j=0
 		OptionTheoryValue={}
-		for theoryvalue in OptionTheoryValue_:
-			OptionTheoryValue[j]=QTableWidgetItem(str(round(theoryvalue,4))+'/'+str(round(self.winddata.wind_theoryValue_sheet_.loc[dateSelect,OptionProduct_[j]],4)))
+		for product in OptionProduct_:
+			OptionTheoryValue[j]=QTableWidgetItem(str(round(self.sheetData.theoryvalue_sheet_.loc[dateSelect,product],4))+'/'+str(round(self.winddata.wind_theoryValue_sheet_.loc[dateSelect,OptionProduct_[j]],4)))
 			OptionTheoryValue[j].setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
 			self.OptionTable.setItem(j,8,OptionTheoryValue[j])
 			j=j+1
@@ -443,10 +445,10 @@ class optionAnalysis(QWidget):
 		self.comboParas=QComboBox(self)
 		self.comboParas.addItem('')
 		self.comboParas.addItem('delta')
-		self.comboParas.addItem('WWModel')
-		self.comboParas.addItem('ZakamoulineModel')
+		#self.comboParas.addItem('WWModel')
+		#self.comboParas.addItem('ZakamoulineModel')
 		self.comboParas.addItem('gamma')
-		self.comboParas.addItem('vega')
+		#self.comboParas.addItem('vega')
 		self.comboParas.addItem('impliedVolatility')
 		self.comboParas.addItem('optionPrice')
 		self.comboParas.addItem('realizedVol')
@@ -515,10 +517,10 @@ class optionAnalysis(QWidget):
 	def onActivatedParas(self,Paras):
 		if Paras=='delta':
 			self.DeltaPlot()
-		elif Paras=='WWModel':
-			self.WWPlot()
-		elif Paras=='ZakamoulineModel':
-			self.ZakaPlot()
+		#elif Paras=='WWModel':
+			#self.WWPlot()
+		#elif Paras=='ZakamoulineModel':
+			#self.ZakaPlot()
 		elif Paras=='gamma':
 			self.GammaPlot()
 		elif Paras=='vega':
@@ -539,10 +541,12 @@ class optionAnalysis(QWidget):
 		end=t[-1]
 		s=temp.values
 		temp_wind=self.winddata.wind_delta_sheet_.loc[start:end,self.optionProductTransit]
+		t_wind=temp_wind.index
 		s_wind=temp_wind.values
+		
 		self.axes.plot(t,s,label=r'delta')
 		self.axes.hold(True)
-		self.axes.plot(t,s_wind,label=r'wind_delta')
+		self.axes.plot(t_wind,s_wind,label=r'wind_delta')
 		self.axes.legend(loc=2)
 		self.canvas.draw()
 		self.axes.hold(False)
@@ -591,11 +595,12 @@ class optionAnalysis(QWidget):
 		start=t[0]
 		end=t[-1]
 		temp_wind=self.winddata.wind_gamma_sheet_.loc[start:end,self.optionProductTransit]
+		t_wind=temp_wind.index
 		s_wind=temp_wind.values
 		s=temp.values
 		self.axes.plot(t,s,label=r'gamma')
 		self.axes.hold(True)
-		self.axes.plot(t,s_wind,label=r'wind_gamma')
+		self.axes.plot(t_wind,s_wind,label=r'wind_gamma')
 		self.axes.legend(loc=2)
 		self.canvas.draw()
 		self.axes.hold(False)
@@ -606,11 +611,12 @@ class optionAnalysis(QWidget):
 		start=t[0]
 		end=t[-1]
 		temp_wind=self.winddata.wind_vega_sheet_.loc[start:end,self.optionProductTransit]
+		t_wind=temp_wind.index
 		s_wind=temp_wind.values
 		s=temp.values
 		self.axes.plot(t,s,label=r'vega')
 		self.axes.hold(True)
-		self.axes.plot(t,s_wind,label=r'wind_vega')
+		self.axes.plot(t_wind,s_wind,label=r'wind_vega')
 		self.axes.legend(loc=2)
 		self.canvas.draw()
 		self.axes.hold(False)
@@ -621,11 +627,12 @@ class optionAnalysis(QWidget):
 		start=t[0]
 		end=t[-1]
 		temp_wind=self.winddata.wind_impliedVolatility_sheet_.loc[start:end,self.optionProductTransit]
+		t_wind=temp_wind.index
 		s_wind=temp_wind.values
 		s=temp.values
 		self.axes.plot(t,s,label=r'impliedVolatility')
 		self.axes.hold(True)
-		self.axes.plot(t,s_wind,label=r'wind_impliedVolatility')
+		self.axes.plot(t_wind,s_wind,label=r'wind_impliedVolatility')
 		self.axes.legend(loc=2)
 		self.canvas.draw()
 		self.axes.hold(False)
@@ -640,11 +647,12 @@ class optionAnalysis(QWidget):
 		t2=temp2.index
 		s2=temp2.values
 		temp1_wind=self.winddata.wind_theoryValue_sheet_.loc[start:end,self.optionProductTransit]
+		t_wind=temp1_wind.index
 		s_wind=temp1_wind.values
 		self.axes.plot(t1,s1,label=r'theoryvalue',color='blue')
 		self.axes.hold(True)
 		self.axes.plot(t2,s2,label=r'mktprice',color='red')
-		self.axes.plot(t1,s_wind,label=r'wind_theoryvalue',color='green')
+		self.axes.plot(t_wind,s_wind,label=r'wind_theoryvalue',color='green')
 		self.axes.legend(loc=2)
 		self.canvas.draw()
 		self.axes.hold(False)
