@@ -24,7 +24,7 @@ class BackTest(QWidget):
 		self.CreateButton()
 		self.comboBoxAct()
 		self.EditChange()
-		self.StartDate='20150210'
+		self.StartDate='20150301'
 		self.EndDate='20170720'
 		self.Capital=10000000
 		self.CostRate=0.0025
@@ -252,12 +252,14 @@ class optionAnalysis(QWidget):
 
 		self.figure2=plt.figure()	
 		
-		self.axesMarginAccount=self.figure2.add_subplot(211)
-		self.axesCash=self.figure2.add_subplot(212)
+		self.axesMarginAccount=self.figure2.add_subplot(311)
+		self.axesCash=self.figure2.add_subplot(312)
+		self.axesNetYield=self.figure2.add_subplot(313)
 		self.canvas2=FigureCanvas(self.figure2)
 		
 		self.axesMarginAccount.hold(False)
 		self.axesCash.hold(False)
+		self.axesNetYield.hold(False)
 		self.canvas2.hide()	
 			
 		self.figure3=plt.figure()
@@ -354,6 +356,8 @@ class optionAnalysis(QWidget):
 			
 			self.axesMarginAccount.hold(True)
 			self.axesCash.hold(True)
+			self.axesNetYield.hold(True)
+
 			self.axesdelta.hold(True)
 			self.axesgamma.hold(True)
 			self.axesvega.hold(True)
@@ -372,6 +376,8 @@ class optionAnalysis(QWidget):
 
 			self.axesMarginAccount.hold(False)
 			self.axesCash.hold(False)
+			self.axesNetYield.hold(False)
+
 			self.axesdelta.hold(False)
 			self.axesgamma.hold(False)
 			self.axesvega.hold(False)
@@ -403,6 +409,7 @@ class optionAnalysis(QWidget):
 			self.comboVol.hide()
 			self.MarginAccountPlot()
 			self.CashInHandPlot()
+			self.NetYieldPlot()
 			self.canvas2.show()
 			self.canvas1.hide()
 			self.canvas3.hide()
@@ -667,7 +674,19 @@ class optionAnalysis(QWidget):
 			self.axesCash.plot(t,s,label=r'cashinhandsum')		
 			self.axesCash.legend(loc=2)
 			self.canvas2.draw()
-	
+	def NetYieldPlot(self):
+		if self.Transit=='day':
+			t=self.data.BackTestInterval
+			s=self.data.NetYield_['NetYield']
+			self.axesNetYield.plot(t,s,label=r'NetYield')
+			self.axesNetYield.legend(loc=2)
+			self.canvas2.draw()
+		else:
+			t=self.data.BackTestInterval
+			s=self.data.NetYieldSum_['NetYield']
+			self.axesNetYield.plot(t,s,label=r'NetYield')
+			self.axesNetYield.legend(loc=2)
+			self.canvas2.draw()
 
 
 	def deltaPlot(self):

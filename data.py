@@ -489,6 +489,7 @@ class realizedVolatility:
 		self.underlyingYieldRate_10=np.log(self.underlying.pct_change(10)+1)
 		self.underlyingYieldRate_20=np.log(self.underlying.pct_change(20)+1)
 		self.underlyingYieldRate_30=np.log(self.underlying.pct_change(30)+1)
+		self.underlyingYieldRate_60=np.log(self.underlying.pct_change(60)+1)
 		
 		self.realizedVol_90=self.underlyingYieldRate.rolling(window=90,center=False).std()*np.sqrt(252)
 		self.realizedVol_60=self.underlyingYieldRate.rolling(window=60,center=False).std()*np.sqrt(252)
